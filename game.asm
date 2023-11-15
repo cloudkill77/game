@@ -9,11 +9,15 @@
   .rsset $0000  ;;start variables at ram location 0
   
 player_x  .rs 1  ; .rs 1 means reserve one byte of space
-player_y  .rs 1  
-boost .rs 1
-fired .rs 1
+player_y  .rs 1  ; player y cordinates
+boost .rs 1 ; has boost been applied
+fired .rs 1 ; has the missile been fired
+fade .rs 1 ; 
 ;proj_x .rs 1
 ;proj_y .rs 1
+sprite .rs 1 ; sprite iteration (animation)
+frame .rs 1 ; keep track of frame
+
 
 ;;;;;;;;;;;;;;;
 
@@ -94,6 +98,21 @@ LoadSpritesLoop:
   BNE LoadSpritesLoop   ; Branch to LoadSpritesLoop if compare was Not Equal to zero
                         ; if compare was equal to zero, keep going down 
   
+;  LDX #$00              ; start at 0 
+; LoadSpriteArrayLoop:
+;  LDA sprite_array, x        ; load data from address (sprites +  x)
+;  STA $0214, x          ; store into RAM address ($0200 + x)
+;  INX                   ; X = X + 1
+;  CPX #$28              ; Compare X to hex $14, decimal 20. loads the first 20 bytes of sprites (5 sprites)
+;  BNE LoadSpriteArrayLoop   ; Branch to LoadSpritesLoop if compare was Not Equal to zero
+                        ; if compare was equal to zero, keep going down 
+
+
+ 
+   
+  
+  
+  
   LDA #%10000000   ; enable NMI, sprites from Pattern Table 0
   STA $2000
   
@@ -104,6 +123,8 @@ LoadSpritesLoop:
   STA player_x
   LDA $0200
   STA player_y
+  
+  JSR init_apu
  
 Foreverloop:
   JMP Foreverloop     ;jump back to Forever, infinite loop
@@ -132,6 +153,7 @@ NMI:
   STA $2003       ; set the low byte (00) of the RAM address
   LDA #$02
   STA $4014       ; set the high byte (02) of the RAM address, start the transfer
+ 
  
 ; if it has exceeded x position of xxx, reset the missile
   LDA $0213 ; x coordinates
@@ -189,15 +211,12 @@ ReadB:
   LDA #$1	; load #$1 into accumulator
   STA fired	; store 1 in variable "fired"
  
-  lda #138
-  sta $400A
-
-  lda #139
-  sta $400B
-
-  lda #%11000000
-  sta $4008
-  sta $4017
+  lda #130
+  sta $4002
+  lda #200
+  sta $4003
+  lda #%10111111
+  sta $4000
   
   LDA player_x ; load x coordinates of player
   STA $0213 ; store in x coordinates of sprite 5
@@ -298,6 +317,8 @@ ReadRight:
   LDA player_x
   CMP #$F0 ; ; if it has exceeded x position of xxx, ignore further movement in x axis to the right
   BEQ ReadRightDone ; if equal to zero, go to readrightdone
+  CMP #$F1 ; ; if it has exceeded x position of xxx, ignore further movement in x axis to the right
+  BEQ ReadRightDone ; if equal to zero, go to readrightdone
     
   STA $0203
   STA $020B
@@ -318,7 +339,48 @@ ReadRight:
   STA boost  
   
 ReadRightDone:
+
+  ldx #$0
+; frame animation
+animatedspriteloop:
+  CLC
+  lda #$50
+  sta $0230 ; y-pos
+  ldx sprite ; load current sprite frame into x
+  lda array, x ; load value from array based on sprite frame
+  sta $0231 ; tile number
+  lda #%00000001
+  sta $0232 ; attribute
+  lda #$50
+  sta $0233 ; x-pos
+
+  ldy frame ; load current frame number into y
+  iny ; increase y by 1
+  sty frame ; store new frame number
+  cpy #6 ; count up to 6
+  beq nextframe ; if result is zero, branch to nextframe, otherwise continue
+
+; /frame animation
     
+  jsr nmi_end2
+
+nextframe:
+  ldx #$0
+  stx frame ; reset frame counter to 0
+  ldx sprite ; load current sprite frame number
+  inx ; increase frame by 1
+  stx sprite ; store new sprite frame number value
+  cpx #$A ; count up to 10
+  beq resetanimation ; if result is zero, branch to resetanimation, otherwise continue
+  rts
+  
+resetanimation:
+  ldx #$0
+  stx sprite ; reset sprite frame counter to 0
+  rts
+  	
+nmi_end2:
+	
   RTI
 
 ;;;;;;;;;;;;;;  
@@ -348,6 +410,30 @@ sprites:
   .db $20, $1A, %00000000, $08   ;sprite 3/4: player
   .db $20, $1B, %00000000, $10   ;sprite 4/4: player
   .db $DC, $0E, %00000001, $CD ; sprite 5: projectile (y 220, x 205)
+ 
+;sprite_array:
+;  .db $50, $c4, %00000000, $58 ; frame1
+;  .db $60, $c5, %00000000, $60 ; frame2
+;  .db $70, $c6, %00000000, $68 ; frame3
+;  .db $70, $c7, %00000000, $70 ; frame4
+;  .db $70, $c8, %00000000, $78 ; frame5
+;  .db $70, $c8, %00000000, $80 ; frame5
+;  .db $70, $c7, %00000000, $88 ; frame4
+;  .db $70, $c6, %00000000, $90 ; frame3
+;  .db $60, $c5, %00000000, $98 ; frame2
+;  .db $50, $c4, %00000000, $A0 ; frame1
+
+array:
+  .db $c4
+  .db $c5
+  .db $c6
+  .db $c7
+  .db $c8
+  .db $c8
+  .db $c7
+  .db $c6
+  .db $c5
+  .db $c4
 
 ;  76543210
 ;  ||||||||
