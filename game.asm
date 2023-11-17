@@ -8,15 +8,32 @@
 ;; DECLARE SOME VARIABLES HERE
   .rsset $0000  ;;start variables at ram location 0
   
-player_x  .rs 1  ; .rs 1 means reserve one byte of space
-player_y  .rs 1  ; player y cordinates
-boost .rs 1 ; has boost been applied
-fired .rs 1 ; has the missile been fired
+player_x  .rs 1  ; .rs 1 means reserve one byte of space. x-pos of player 1/4 sprite
+player_y  .rs 1  ; player y cordinates. y-pos of player 1/4 sprite
+enemy_x .rs 1
+enemy_y .rs 1
+;player_h .rs 1 ; player health
+;player_l .rs 1 ; player lives
+;enemy_h .rs 1 ; enemy health
+;missile_h .rs 1 ; missile health
+;bullet_h .rs 1 ; bullet health
+boost .rs 1 ; variable stores if boost has been applied. it is reset after having added boost to the sprites movement.
+fired .rs 1 ; variable stores if the missile been fired. it is reset after leaving the screen.
 fade .rs 1 ; 
 ;proj_x .rs 1
 ;proj_y .rs 1
 sprite .rs 1 ; sprite iteration (animation)
 frame .rs 1 ; keep track of frame
+gametime .rs 1 ; keep track of gametime (shortterm, up to 255 frames, around 4seconds)
+
+;good sprites
+player_h = 100
+player_l = 5
+missile_h = 20
+bullet_h = 5
+;bad sprites
+enemy_h = 200
+;art sprites
 
 
 ;;;;;;;;;;;;;;;
@@ -81,7 +98,6 @@ LoadBackgroundPaletteLoop:
   BNE LoadBackgroundPaletteLoop  ; Branch to LoadBackgroundPaletteLoop if compare was Not Equal to zero
   
   LDX #$00      ; set X to Zero
-        
 LoadSpritePaletteLoop:
   LDA sprite_palette, x     ;load palette byte
   STA $2007					;write to PPU
@@ -97,6 +113,15 @@ LoadSpritesLoop:
   CPX #$14              ; Compare X to hex $14, decimal 20. loads the first 20 bytes of sprites (5 sprites)
   BNE LoadSpritesLoop   ; Branch to LoadSpritesLoop if compare was Not Equal to zero
                         ; if compare was equal to zero, keep going down 
+
+LoadEnemyLoop:
+  LDA tiefighter, x        ; load data from address (sprites +  x)
+  STA $0234, x          ; store into RAM address ($0200 + x)
+  INX                   ; X = X + 1
+  CPX #$10              ; Compare X to hex $14, decimal 20. loads the first 20 bytes of sprites (5 sprites)
+  BNE LoadEnemyLoop   ; Branch to LoadSpritesLoop if compare was Not Equal to zero
+                        ; if compare was equal to zero, keep going down 
+ 
   
 ;  LDX #$00              ; start at 0 
 ; LoadSpriteArrayLoop:
@@ -112,22 +137,33 @@ LoadSpritesLoop:
    
   
   
-  
-  LDA #%10000000   ; enable NMI, sprites from Pattern Table 0
+; PPU registers  
+  LDA #%10000000   ; enable NMI, sprite size 8x8, sprites from Pattern Table 0, base nametable address $2000
   STA $2000
   
-  LDA #%00010000   ; enable sprites
+  LDA #%00010000   ; enable sprites, hide sprites in leftmost 8 pixels of screen, hide background in leftmost 8 pixels of screen
   STA $2001
   
-  LDA $0203
-  STA player_x
-  LDA $0200
-  STA player_y
+  LDA $0203 ; load x-pos of sprite 1/4
+  STA player_x ; store x-pos in player_x variable
+  LDA $0200 ; load y-pos of sprite 1/4
+  STA player_y ; store y-pos in player_y variable
   
-  JSR init_apu
+  JSR init_apu ; jump to init_apu label for initialising sound registers
+ 
+  LDA $0237 ; load x-pos of tiefighter 1/4
+  STA enemy_x ; store x-pos in player_x variable
+  LDA $0234 ; load y-pos of sprite 1/4
+  STA enemy_y ; store y-pos in player_y variable
+
  
 Foreverloop:
   JMP Foreverloop     ;jump back to Forever, infinite loop
+
+restart:
+  ldx 100
+  stx player_h
+  ; pause or wait for keystroke 
 
 init_apu:
   ldx #$00
@@ -149,35 +185,123 @@ initloop:
   rts
 
 NMI: 
+; [RENDER]  
   LDA #$00
   STA $2003       ; set the low byte (00) of the RAM address
   LDA #$02
   STA $4014       ; set the high byte (02) of the RAM address, start the transfer
  
+  lda player_l
+  cmp 5
+  beq l5
+  cmp 4
+  beq l4
+;  cmp 3
+;  beq l3
+;  cmp 2
+;  beq l2
+;  cmp 1
+;  beq l1
+;  cmp 0
+;  beq l0  
+  
+l5:
+  lda s5, x
+  sta $022c, x
+  inx
+  cpx #$4
+  bne l5
+  jmp livesok
+  
+l4:
+  lda s4, x
+  sta $022c, x
+  inx
+  cpx #$4
+  bne l4  
+  jmp livesok
+
+livesok:
+
+;LoadEnemyLoop:
+;  LDA tiefighter, x        ; load data from address (sprites +  x)
+;  STA $0234, x          ; store into RAM address ($0200 + x)
+;  INX                   ; X = X + 1
+;  CPX #$10              ; Compare X to hex $14, decimal 20. loads the first 20 bytes of sprites (5 sprites)
+;  BNE LoadEnemyLoop   ; Branch to LoadSpritesLoop if compare was Not Equal to zero
+                        ; if compare was equal to zero, keep going down   
+  
+ 
+ ;[check collisions]
+  lda player_x
+  cmp enemy_x
+  bne clear
+  lda player_y
+  cmp enemy_y
+  bne clear
+  ;collision has occured
+  clc
+  lda player_h
+  cmp enemy_h
+  bmi dead
+  ;enemy destroyed and survived
+  ;set enemy alive status to 0
+  
+dead:
+  ldx player_l
+  DEX
+  stx player_l
+  beq gameover
+  jmp restart
+  
+  
+gameover:
+ 
+  
+  
+  
+clear:
+  
+  
+  LDA enemy_x
+  STA $0237 ; x-pos of sprite 1/4
+  STA $023f ; x-pos of sprite 3/4
+  TAX
+  CLC
+  ADC #$08; account for shift of tile location in *.chr . add #$8 to x
+  STA $023b ; x-pos of sprite 2/4
+  STA $0243 ; x-pos of sprite 4/4
+  DEX
+  STX enemy_x   
+  
+ 
  
 ; if it has exceeded x position of xxx, reset the missile
-  LDA $0213 ; x coordinates
-  CMP #$F0 ; 
-  BEQ reset
+  LDA $0213 ; load x coordinates of missile sprite
+  CMP #$F0 ; check if the coordinates equals screen out of bound area
+  BEQ missilereset ; if result is zero, branch to missilereset label to reset the status of the missile
+  CMP #$F1 ; check if the coordinates equals screen out of bound area
+  BEQ missilereset ; if result is zero, branch to missilereset label to reset the status of the missile
+  
  
-;if it has been fired, add 1 to x position of projectile $0213
+;if it has been fired, add 2 to x-pos of missile $0213
   LDA fired
   BEQ nmi_end ; branch if equal to zero, branch to nmi_end if it hasnt been fired
-  LDA $0213
+  LDA $0213 ; load current x-pos of missile
   CLC
-  ADC #$1 ; if it has been fired, move the missile to the right
+  ADC #$2 ; if it has been fired, move the missile to the right
   STA $0213
   JMP nmi_end
 
-;move the missile to the default position. reset the fired variable to 0 
-reset:
-  jsr init_apu
-  LDA #$CD ;CD = 205
-  STA $0213 ; x coordinates
-  LDA #$DC ; DC = 220
-  STA $0210 ; y coordinates
+;move the missile back to the initial position. reset the fired variable to 0 
+missilereset:
+  jsr init_apu ; reinitialize audio to stop the missile sound effect
+  LDA #$CD ; $CD = 205
+  STA $0213 ; set the x coordinates of the missile in the status bar
+  LDA #$DC ; $DC = 220
+  STA $0210 ; set the y coordinates of the missile in the status bar
   LDA #$0 ; 0
-  STA fired ; stored in fired variable
+  STA fired ; reset status to missile as unfired
 
 nmi_end:
 
@@ -210,7 +334,7 @@ ReadB:
   BNE ReadBDone ; branch if not equal to zero (if it has been fired, go to readbdone), otherwise, continue
   LDA #$1	; load #$1 into accumulator
   STA fired	; store 1 in variable "fired"
- 
+;generate fired missile sound effect 
   lda #130
   sta $4002
   lda #200
@@ -218,10 +342,10 @@ ReadB:
   lda #%10111111
   sta $4000
   
-  LDA player_x ; load x coordinates of player
-  STA $0213 ; store in x coordinates of sprite 5
-  LDA player_y ; load y coordinates of player
-  STA $210 ; store y position of projectile
+  LDA player_x ; load x-pos of player
+  STA $0213 ; store in x-pos of missile (starting position)
+  LDA player_y ; load y-pos of player
+  STA $0210 ; store in y-pos of missile (starting position)
 
 ReadBDone:        ; handling this button is done
 
@@ -251,15 +375,15 @@ ReadUp:
   BEQ ReadUpDone ; if equal to zero, go to readupdone
   
   LDA player_y
-  STA $0200 ; y of sprite 1
-  STA $0204 ; y of sprite 2
+  STA $0200 ; y-pos of sprite 1/4
+  STA $0204 ; y-pos of sprite 2/4
   TAX ; transfer a to x
   CLC ; clear carry
   ADC #$08 ; account for shift of tile location in *.chr . add #$8 to x
-  STA $0208 ; y coordinates of sprite 3
-  STA $020C ; y coordinates if sprite 4
+  STA $0208 ; y-pos of sprite 3/4
+  STA $020C ; y-pos of sprite 4/4
   DEX ; decrease x by 1
-  STX player_y  ; store new x as new y coordinates for player sprite
+  STX player_y  ; store new x as new y-pos for player sprite
 
 ReadUpDone:
 
@@ -274,13 +398,13 @@ ReadDown:
   BEQ ReadDownDone ; if equal to zero, go to readdowndone
 
 ;  LDA player_y
-  STA $0200
-  STA $0204
+  STA $0200 ; y-pos of sprite 1/4
+  STA $0204 ; y-pos of sprite 2/4
   TAX
   CLC
   ADC #$08
-  STA $0208
-  STA $020C
+  STA $0208 ; y-pos of sprite 3/4
+  STA $020C ; y-pos of sprite 4/4
   INX
   STX player_y
 
@@ -297,13 +421,13 @@ ReadLeft:
   BEQ ReadLeftDone ; if equal to zero, go to readleftdone
   
   LDA player_x
-  STA $0203
-  STA $020B
+  STA $0203 ; x-pos of sprite 1/4
+  STA $020B ; x-pos of sprite 3/4
   TAX
   CLC
-  ADC #$08
-  STA $0207
-  STA $020F
+  ADC #$08; account for shift of tile location in *.chr . add #$8 to x
+  STA $0207 ; x-pos of sprite 2/4
+  STA $020F ; x-pos of sprite 4/4
   DEX
   STX player_x   
 
@@ -340,44 +464,44 @@ ReadRight:
   
 ReadRightDone:
 
-  ldx #$0
+; ldx #$0
 ; frame animation
+; sprite animation 
+  
 animatedspriteloop:
   CLC
   lda #$50
-  sta $0230 ; y-pos
+  sta $0230 ; y-pos of bouncing ball
   ldx sprite ; load current sprite frame into x
   lda array, x ; load value from array based on sprite frame
-  sta $0231 ; tile number
+  sta $0231 ; tile number of bouncing ball
   lda #%00000001
-  sta $0232 ; attribute
+  sta $0232 ; attribute of bouncing ball. colour palette 1 set
   lda #$50
-  sta $0233 ; x-pos
+  sta $0233 ; x-pos of bouncing ball
 
   ldy frame ; load current frame number into y
   iny ; increase y by 1
   sty frame ; store new frame number
-  cpy #6 ; count up to 6
+  cpy #$6 ; count up to 6
   beq nextframe ; if result is zero, branch to nextframe, otherwise continue
+  jmp nmi_end2
 
 ; /frame animation
-    
-  jsr nmi_end2
-
 nextframe:
+;  jmp nmi_end2
   ldx #$0
   stx frame ; reset frame counter to 0
   ldx sprite ; load current sprite frame number
   inx ; increase frame by 1
   stx sprite ; store new sprite frame number value
-  cpx #$A ; count up to 10
-  beq resetanimation ; if result is zero, branch to resetanimation, otherwise continue
-  rts
-  
+  cpx #$a ; count up to 10
+  beq resetanimation ; if result is zero, branch to resetanimation, otherwise continue ____ PROBLEM HERE -- problem was 
+  ;with rts at end of nextframe and resetanimation. removed and fixed problem.
+  jmp nmi_end2
 resetanimation:
   ldx #$0
   stx sprite ; reset sprite frame counter to 0
-  rts
   	
 nmi_end2:
 	
@@ -396,10 +520,9 @@ background_palette:
 sprite_palette:
   .db $22,$0F,$00,$15	;sprite palette 1
   .db $22,$16,$27,$28	;sprite palette 2 - fire
-  
   .db $22,$1A,$30,$27	;sprite palette 2
   .db $22,$16,$30,$27	;sprite palette 3
-  .db $22,$0F,$36,$17	;sprite palette 4
+;  .db $22,$0F,$36,$17	;sprite palette 4
 
 	
 sprites:
@@ -410,6 +533,14 @@ sprites:
   .db $20, $1A, %00000000, $08   ;sprite 3/4: player
   .db $20, $1B, %00000000, $10   ;sprite 4/4: player
   .db $DC, $0E, %00000001, $CD ; sprite 5: projectile (y 220, x 205)
+ 
+tiefighter:
+  .db $c8, $4a, %00000000, $32 ; tiefighter 1/4
+  .db $c8, $4b, %00000000, $3a ; tiefighter 2/4
+  .db $d0, $5a, %00000000, $32 ; tiefighter 3/4
+  .db $d0, $5b, %00000000, $3a ; tiefighter 4/4
+
+
  
 ;sprite_array:
 ;  .db $50, $c4, %00000000, $58 ; frame1
@@ -423,7 +554,16 @@ sprites:
 ;  .db $60, $c5, %00000000, $98 ; frame2
 ;  .db $50, $c4, %00000000, $A0 ; frame1
 
-array:
+;  76543210
+;  ||||||||
+;  ||||||++- Palette (4 to 7) of sprite
+;  |||+++--- Unimplemented (read 0)
+;  ||+------ Priority (0: in front of background; 1: behind background)
+;  |+------- Flip sprite horizontally
+;  +-------- Flip sprite vertically
+
+
+array: ; bouncing ball animated frames / tile sequence
   .db $c4
   .db $c5
   .db $c6
@@ -435,13 +575,28 @@ array:
   .db $c5
   .db $c4
 
-;  76543210
-;  ||||||||
-;  ||||||++- Palette (4 to 7) of sprite
-;  |||+++--- Unimplemented (read 0)
-;  ||+------ Priority (0: in front of background; 1: behind background)
-;  |+------- Flip sprite horizontally
-;  +-------- Flip sprite vertically
+
+s0:
+  .db $10, $e0, %00000001, $a
+s1:  
+  .db $20, $e1, %00000001, $b
+s2:  
+  .db $30, $e2, %00000001, $c
+s3:
+  .db $40, $e3, %00000000, $d
+s4:
+  .db $50, $e4, %00000000, $e
+s5:
+  .db $60, $e5, %00000000, $f
+s6:  
+  .db $70, $e6, %00000000, $10
+s7:  
+  .db $80, $e7, %00000000, $11
+s8:  
+  .db $90, $e8, %00000000, $12
+s9:  
+  .db $A0, $e9, %00000000, $13
+
 
 ;;;;;;;;;;;;;;  
 

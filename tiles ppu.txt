@@ -9,14 +9,18 @@
 21C,
 220,
 224,
-228,
-22C,
-230, 231, 232, 233	bouncing ball
-234,
-238,
-23C, 23D, 23E, 23F
-240, 241, 242, 243
+228,               health
+22C, 22D, 22E, 22F lives
+230, 231, 232, 233 bouncing ball
+234, 235, 236, 237 tiefighter 1/4
+238, 239, 23A, 23B tiefighter 2/4
+23C, 23D, 23E, 23F tiefighter 3/4
+240, 241, 242, 243 tiefighter 4/4
 244, 245, 246, 247
+
+tiefighter
+4A 4B
+5A 5B
 
 
 200 y
