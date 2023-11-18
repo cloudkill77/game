@@ -1,0 +1,82 @@
+collision
+
+
+;pixel perfect:
+
+;[check collisions]
+  lda player_x
+  cmp enemy_x
+  bne clear
+  lda player_y
+  cmp enemy_y
+  bne clear
+  ;collision has occured
+  clc
+  lda player_h
+  cmp enemy_h
+  bmi dead
+  ;enemy destroyed and survived
+  ;set enemy alive status to 0
+  jmp clear
+  
+  
+  
+  ; approximation
+
+clc
+lda #$00
+ldx #$00
+define player_x $0
+define enemy_x $1
+define distance $2
+define player_h $3
+define enemy_h $4
+lda #$64
+sta player_x 
+lda #$60
+sta enemy_x
+lda #$64
+sta player_h
+lda #$60
+sta enemy_h
+
+;[check collisions]
+lda $0
+sbc $1
+sta $2
+CMP  #$5     ;Accumulator less than $5?
+BCS  clear   ;no, branch to clear 
+; collision occurred
+lda #$2 ; red
+sta $200
+
+damagecheck:
+clc
+ldy enemy_h
+ldx player_h
+lda player_h
+sbc enemy_h
+sta player_h
+bmi dead
+lda #$0
+sta enemy_h
+
+
+
+jmp end
+
+
+clear: ;Execute this if Accumulator is less than location $20.
+
+lda #$5 ; green
+sta $200
+jmp end
+
+
+
+dead:
+lda #$b
+sta $200
+
+
+end:

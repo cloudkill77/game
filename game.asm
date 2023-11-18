@@ -7,33 +7,32 @@
 ;;;;;;;;;;;;;;;
 ;; DECLARE SOME VARIABLES HERE
   .rsset $0000  ;;start variables at ram location 0
-  
-player_x  .rs 1  ; .rs 1 means reserve one byte of space. x-pos of player 1/4 sprite
-player_y  .rs 1  ; player y cordinates. y-pos of player 1/4 sprite
-enemy_x .rs 1
-enemy_y .rs 1
-;player_h .rs 1 ; player health
-;player_l .rs 1 ; player lives
-;enemy_h .rs 1 ; enemy health
-;missile_h .rs 1 ; missile health
-;bullet_h .rs 1 ; bullet health
+; .rs 1 means reserve one byte of space.
+
+; good sprites:
+player_x  .rs 1  ;  x-pos of player sprite
+player_y  .rs 1  ; y-pos of player sprite
+player_h .rs 1 ; player health
+player_l .rs 1 ; player lives
+missile_h .rs 1 ; missile health
+bullet_h .rs 1 ; bullet health
+;bad sprites;
+enemy_x .rs 1 ; enemy x-pos
+enemy_y .rs 1 ; enemy y-pos
+enemy_h .rs 1 ; enemy health
+enemy_alive .rs 1 ; is enemy alive or dead. 0 hes dead, 1 hes alive
+respawntimer .rs 1 ; timer for enemy respawn
+
+;other stuff
 boost .rs 1 ; variable stores if boost has been applied. it is reset after having added boost to the sprites movement.
 fired .rs 1 ; variable stores if the missile been fired. it is reset after leaving the screen.
-fade .rs 1 ; 
-;proj_x .rs 1
-;proj_y .rs 1
+fade .rs 1 ; not sure.... had to do with sound from fired missile
+;missile_x .rs 1 ; missile, not sure if needed
+;missile_y .rs 1
 sprite .rs 1 ; sprite iteration (animation)
-frame .rs 1 ; keep track of frame
+frame .rs 1 ; keep track of frame for animation
 gametime .rs 1 ; keep track of gametime (shortterm, up to 255 frames, around 4seconds)
-
-;good sprites
-player_h = 100
-player_l = 5
-missile_h = 20
-bullet_h = 5
-;bad sprites
-enemy_h = 200
-;art sprites
+distance .rs 1 ; collision distance
 
 
 ;;;;;;;;;;;;;;;
@@ -112,13 +111,14 @@ LoadSpritesLoop:
   INX                   ; X = X + 1
   CPX #$14              ; Compare X to hex $14, decimal 20. loads the first 20 bytes of sprites (5 sprites)
   BNE LoadSpritesLoop   ; Branch to LoadSpritesLoop if compare was Not Equal to zero
-                        ; if compare was equal to zero, keep going down 
-
+                        ; if compare was equal to zero, keep going down
+					
+  LDX #$00
 LoadEnemyLoop:
   LDA tiefighter, x        ; load data from address (sprites +  x)
   STA $0234, x          ; store into RAM address ($0200 + x)
   INX                   ; X = X + 1
-  CPX #$10              ; Compare X to hex $14, decimal 20. loads the first 20 bytes of sprites (5 sprites)
+  CPX #$10              ; Compare X to hex $10, decimal 16. loads the first 20 bytes of sprites (5 sprites)
   BNE LoadEnemyLoop   ; Branch to LoadSpritesLoop if compare was Not Equal to zero
                         ; if compare was equal to zero, keep going down 
  
@@ -128,15 +128,28 @@ LoadEnemyLoop:
 ;  LDA sprite_array, x        ; load data from address (sprites +  x)
 ;  STA $0214, x          ; store into RAM address ($0200 + x)
 ;  INX                   ; X = X + 1
-;  CPX #$28              ; Compare X to hex $14, decimal 20. loads the first 20 bytes of sprites (5 sprites)
+;  CPX #$28              ; Compare X to hex $28, decimal 40. loads the first 20 bytes of sprites (5 sprites)
 ;  BNE LoadSpriteArrayLoop   ; Branch to LoadSpritesLoop if compare was Not Equal to zero
                         ; if compare was equal to zero, keep going down 
 
-
- 
+start:
+;good sprites
+  lda #$64 ; 100 health
+  sta player_h
+  lda #$5 ; 5 lives
+  sta player_l
+  lda #$14  ; missile has 20 health
+  sta missile_h
+  lda #$5 ; bullet has 5 health
+  sta bullet_h
+;bad sprites
+;  lda #$c8 ; enemy has 200 health
+  lda #$20
+  sta enemy_h
+   
    
   
-  
+ppu: 
 ; PPU registers  
   LDA #%10000000   ; enable NMI, sprite size 8x8, sprites from Pattern Table 0, base nametable address $2000
   STA $2000
@@ -148,24 +161,14 @@ LoadEnemyLoop:
   STA player_x ; store x-pos in player_x variable
   LDA $0200 ; load y-pos of sprite 1/4
   STA player_y ; store y-pos in player_y variable
-  
-  JSR init_apu ; jump to init_apu label for initialising sound registers
- 
+
   LDA $0237 ; load x-pos of tiefighter 1/4
   STA enemy_x ; store x-pos in player_x variable
   LDA $0234 ; load y-pos of sprite 1/4
   STA enemy_y ; store y-pos in player_y variable
 
- 
-Foreverloop:
-  JMP Foreverloop     ;jump back to Forever, infinite loop
 
-restart:
-  ldx 100
-  stx player_h
-  ; pause or wait for keystroke 
 
-init_apu:
   ldx #$00
  ; initialize sound registers 
 initloop:
@@ -182,7 +185,28 @@ initloop:
 ; setup apu frame counter
   lda #$40
   sta $4017  
+ 
+Foreverloop:
+  JMP Foreverloop     ;jump back to Forever, infinite loop
+
+init_apu:
+  lda #$00
+  sta $4015
+  lda #$0F
+  sta $4015
+; setup apu frame counter
+  lda #$40
+  sta $4017  
   rts
+
+restart: ; pause and wait for keystroke in collision routine
+  lda #$64 ; reset health back to 100
+  sta player_h
+  LDX #$00              ; start at 0
+  jmp ppu
+
+
+ 
 
 NMI: 
 ; [RENDER]  
@@ -191,19 +215,99 @@ NMI:
   LDA #$02
   STA $4014       ; set the high byte (02) of the RAM address, start the transfer
  
+  lda enemy_alive
+  bne spawnclear
+ 
+spawn:
+  ldx respawntimer
+  inx
+  stx respawntimer
+  cpx #$FF
+  bcs spawnclear
+
+; move enemy onscreen
+  LDA #$32
+  STA $0237 ; x-pos of sprite 1/4
+  STA $023f ; x-pos of sprite 3/4
+  lda #$3a
+  STA $023b ; x-pos of sprite 2/4
+  STA $0243 ; x-pos of sprite 4/4  
+  
+  lda #$1
+  sta enemy_alive
+  lda #$20
+  sta enemy_h
+
+ 
+spawnclear:
+ 
+;[check collisions]
+  clc
+  lda #$00
+  ldx #$00
+  lda player_x 
+  sbc enemy_x
+  sta distance
+  CMP #$5     ;Accumulator less than $5?
+  BCS clear   ;no, branch to clear 
+;bcc clear
+; collision occurred
+
+damagecheck:
+  clc
+  lda player_h
+  sbc enemy_h
+  sta player_h
+  bmi dead
+  lda #$00
+  sta enemy_h
+  sta enemy_alive
+  ; move enemy   offscreen
+  LDA #$f0
+  STA $0237 ; x-pos of sprite 1/4
+  STA $023f ; x-pos of sprite 3/4
+  STA $023b ; x-pos of sprite 2/4
+  STA $0243 ; x-pos of sprite 4/4
+  lda #$00
+  sta respawntimer
+  jmp clear
+  
+dead:
+  ldx player_l
+  DEX
+  stx player_l
+  ;beq gameover
+  ;jmp overloop
+;  jmp restart
+  jmp restart
+gameover:
+  ;brk
+  
+clear: ;Execute this if Accumulator is less than location $20.
+
+;  lda #$5 ; green
+;  sta $200
+  ;brk
+ 
+
+
+ ;check lives
+  clc
+  ldx #$00
   lda player_l
-  cmp 5
+  cmp #$5
   beq l5
-  cmp 4
+  cmp #$4
   beq l4
-;  cmp 3
-;  beq l3
-;  cmp 2
-;  beq l2
-;  cmp 1
-;  beq l1
-;  cmp 0
-;  beq l0  
+  cmp #$3
+  beq l3
+  cmp #$2
+  beq l2
+  cmp #$1
+  beq l1
+  cmp #$0
+  beq l0
+  jmp livesok
   
 l5:
   lda s5, x
@@ -220,7 +324,39 @@ l4:
   cpx #$4
   bne l4  
   jmp livesok
+  
+l3:
+  lda s3, x
+  sta $022c, x
+  inx
+  cpx #$4
+  bne l3  
+  jmp livesok
 
+l2:
+  lda s2, x
+  sta $022c, x
+  inx
+  cpx #$4
+  bne l2  
+  jmp livesok
+
+l1:
+  lda s1, x
+  sta $022c, x
+  inx
+  cpx #$4
+  bne l1  
+  jmp livesok
+  
+l0:
+  lda s0, x
+  sta $022c, x
+  inx
+  cpx #$4
+  bne l0  
+  jmp livesok
+  
 livesok:
 
 ;LoadEnemyLoop:
@@ -232,47 +368,23 @@ livesok:
                         ; if compare was equal to zero, keep going down   
   
  
- ;[check collisions]
-  lda player_x
-  cmp enemy_x
-  bne clear
-  lda player_y
-  cmp enemy_y
-  bne clear
-  ;collision has occured
-  clc
-  lda player_h
-  cmp enemy_h
-  bmi dead
-  ;enemy destroyed and survived
-  ;set enemy alive status to 0
-  
-dead:
-  ldx player_l
-  DEX
-  stx player_l
-  beq gameover
-  jmp restart
-  
-  
-gameover:
- 
+
   
   
   
-clear:
+
   
-  
-  LDA enemy_x
-  STA $0237 ; x-pos of sprite 1/4
-  STA $023f ; x-pos of sprite 3/4
-  TAX
-  CLC
-  ADC #$08; account for shift of tile location in *.chr . add #$8 to x
-  STA $023b ; x-pos of sprite 2/4
-  STA $0243 ; x-pos of sprite 4/4
-  DEX
-  STX enemy_x   
+; move enemy  
+;  LDA enemy_x
+;  STA $0237 ; x-pos of sprite 1/4
+;  STA $023f ; x-pos of sprite 3/4
+;  TAX
+;  CLC
+;  ADC #$08; account for shift of tile location in *.chr . add #$8 to x
+;  STA $023b ; x-pos of sprite 2/4
+;  STA $0243 ; x-pos of sprite 4/4
+;  DEX
+;  STX enemy_x   
   
  
  
@@ -360,7 +472,7 @@ ReadStart:
   LDA $4016       ; player 1 - Start
   AND #%00000001  ; only look at bit 0
   BEQ ReadStartDone   ; branch to ReadStartDone if button is NOT pressed (0)
-
+  jmp restart
 ReadStartDone:
 
 ReadUp: 
@@ -468,40 +580,7 @@ ReadRightDone:
 ; frame animation
 ; sprite animation 
   
-animatedspriteloop:
-  CLC
-  lda #$50
-  sta $0230 ; y-pos of bouncing ball
-  ldx sprite ; load current sprite frame into x
-  lda array, x ; load value from array based on sprite frame
-  sta $0231 ; tile number of bouncing ball
-  lda #%00000001
-  sta $0232 ; attribute of bouncing ball. colour palette 1 set
-  lda #$50
-  sta $0233 ; x-pos of bouncing ball
 
-  ldy frame ; load current frame number into y
-  iny ; increase y by 1
-  sty frame ; store new frame number
-  cpy #$6 ; count up to 6
-  beq nextframe ; if result is zero, branch to nextframe, otherwise continue
-  jmp nmi_end2
-
-; /frame animation
-nextframe:
-;  jmp nmi_end2
-  ldx #$0
-  stx frame ; reset frame counter to 0
-  ldx sprite ; load current sprite frame number
-  inx ; increase frame by 1
-  stx sprite ; store new sprite frame number value
-  cpx #$a ; count up to 10
-  beq resetanimation ; if result is zero, branch to resetanimation, otherwise continue ____ PROBLEM HERE -- problem was 
-  ;with rts at end of nextframe and resetanimation. removed and fixed problem.
-  jmp nmi_end2
-resetanimation:
-  ldx #$0
-  stx sprite ; reset sprite frame counter to 0
   	
 nmi_end2:
 	
@@ -541,18 +620,6 @@ tiefighter:
   .db $d0, $5b, %00000000, $3a ; tiefighter 4/4
 
 
- 
-;sprite_array:
-;  .db $50, $c4, %00000000, $58 ; frame1
-;  .db $60, $c5, %00000000, $60 ; frame2
-;  .db $70, $c6, %00000000, $68 ; frame3
-;  .db $70, $c7, %00000000, $70 ; frame4
-;  .db $70, $c8, %00000000, $78 ; frame5
-;  .db $70, $c8, %00000000, $80 ; frame5
-;  .db $70, $c7, %00000000, $88 ; frame4
-;  .db $70, $c6, %00000000, $90 ; frame3
-;  .db $60, $c5, %00000000, $98 ; frame2
-;  .db $50, $c4, %00000000, $A0 ; frame1
 
 ;  76543210
 ;  ||||||||
@@ -563,39 +630,27 @@ tiefighter:
 ;  +-------- Flip sprite vertically
 
 
-array: ; bouncing ball animated frames / tile sequence
-  .db $c4
-  .db $c5
-  .db $c6
-  .db $c7
-  .db $c8
-  .db $c8
-  .db $c7
-  .db $c6
-  .db $c5
-  .db $c4
-
 
 s0:
-  .db $10, $e0, %00000001, $a
+  .db $a, $e0, %00000001, $14
 s1:  
-  .db $20, $e1, %00000001, $b
+  .db $a, $e1, %00000001, $1c
 s2:  
-  .db $30, $e2, %00000001, $c
+  .db $a, $e2, %00000001, $24
 s3:
-  .db $40, $e3, %00000000, $d
+  .db $a, $e3, %00000000, $2c
 s4:
-  .db $50, $e4, %00000000, $e
+  .db $a, $e4, %00000000, $34
 s5:
-  .db $60, $e5, %00000000, $f
+  .db $a, $e5, %00000000, $3c
 s6:  
-  .db $70, $e6, %00000000, $10
+  .db $a, $e6, %00000000, $44
 s7:  
-  .db $80, $e7, %00000000, $11
+  .db $a, $e7, %00000000, $4c
 s8:  
-  .db $90, $e8, %00000000, $12
+  .db $a, $e8, %00000000, $54
 s9:  
-  .db $A0, $e9, %00000000, $13
+  .db $a, $e9, %00000000, $5c
 
 
 ;;;;;;;;;;;;;;  
@@ -612,20 +667,3 @@ s9:
   .bank 2
   .org $0000
   .incbin "game.chr"   ;includes 8KB graphics file from SMB1 (tm)
-  .incbin "game.nsf"   ; includes nsf audio file from Super C (tm)
-  
-  ;  * No expansion chip
-;Building music data...
-; * Sequences used: 0 (0 bytes)
-; * Instruments used: 1 (1 bytes)
-; * Song 1, 145 patterns (582 bytes), 29 frames (348 bytes)
-;
-; * Samples located at: $C000
-; * DPCM samples used: 0 (0 bytes)
-; * NSF load address: $A745
-;Writing output file...
-; * Driver size: 5128 bytes
-; * Song data size: 955 bytes (3%)
-; * NSF type: Linear (driver @ $AB00)
-;Done, total file size: 6211 bytes
-

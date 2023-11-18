@@ -1,0 +1,25 @@
+LatchController:
+  LDA #$01        ; store 1 in acumulator
+  STA $4016       ; Write 1 to $4016 to signal the controller 1 to poll its input
+  LDA #$00        ; store 0 in acumulator
+  STA $4016       ; Write 0 to $4016 to finish the poll on controller 1
+
+; sequence is *always* A, B, Select, Start, Up, Down, Left, Right. Controller 1: $4016, Controller 2: $4017
+
+  LDA $4016       ; player 1 - A
+  LDA $4016       ; player 1 - B
+  LDA $4016       ; player 1 - Select
+
+ReadStart: 
+  LDA $4016       ; player 1 - Start
+  AND #%00000001  ; only look at bit 0
+  BEQ ReadStartDone   ; branch to ReadStartDone if button is NOT pressed (0)
+
+ReadStartDone:
+
+  LDA $4016       ; player 1 - Up
+  LDA $4016       ; player 1 - Down
+  LDA $4016       ; player 1 - Left
+  LDA $4016       ; player 1 - Right
+
+  RTI
