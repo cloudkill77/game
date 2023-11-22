@@ -1,0 +1,25 @@
+NMI: 
+; [RENDER]  
+  LDA #$00
+  STA $2003       ; set the low byte (00) of the RAM address
+  LDA #$02
+  STA $4014       ; set the high byte (02) of the RAM address, start the transfer
+ 
+  lda hasplayed
+  cmp #$01    ; 1st run: 0-1=-1
+  beq intro_end ; branch if hasplayed is 1
+  lda framecounter1
+  cmp #$30
+  bne framecounter_end
+
+l3:
+  lda s3, x
+  sta $022c, x
+  inx
+  cpx #$4
+  bne l3
+  inc hasplayed  
+framecounter_end:
+
+intro_end:  
+  inc framecounter1

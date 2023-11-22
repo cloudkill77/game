@@ -1,22 +1,51 @@
   y,  t#,attr,   x
-200, 201, 202, 203	jeep 1/4
-204, 205, 206, 207	jeep 2/4
-208, 209, 20A, 20B	jeep 3/4
-20c, 20D, 20E, 20F	jeep 4/4
-210, 211, 212, 213	projectile
-214,
-218,
-21C,
-220,
-224,
-228,               health
-22C, 22D, 22E, 22F lives
-230, 231, 232, 233 bouncing ball
-234, 235, 236, 237 tiefighter 1/4
-238, 239, 23A, 23B tiefighter 2/4
-23C, 23D, 23E, 23F tiefighter 3/4
-240, 241, 242, 243 tiefighter 4/4
-244, 245, 246, 247
+200, 201, 202, 203	jeep 1/4				
+204, 205, 206, 207	jeep 2/4				"G"
+208, 209, 20A, 20B	jeep 3/4				"A"
+20c, 20D, 20E, 20F	jeep 4/4				"M"
+210, 211, 212, 213	missile					"E"
+214, 215, 216, 217	tiefighter 1/4			sun 1/9
+218, 219, 21A, 21B	tiefighter 2/4			sun 2/9
+21C, 21D, 21E, 21F	tiefighter 3/4			sun 3/9
+220, 221, 222, 223	tiefighter 4/4			sun 4/9
+224, 225, 226, 227	digit 0					sun 5/9
+228, 229, 22A, 22B	digit 1 				sun 6/9
+22C, 22D, 22E, 22F	digit 2					sun 7/9
+230, 231, 232, 233	digit 3					sun 8/9
+234, 235, 236, 237	digit 4					sun 9/9
+238, 239, 23A, 23B	digit 5					cloud1 1/3
+23C, 23D, 23E, 23F	digit 6					cloud1 2/3
+240, 241, 242, 243	digit 7 				cloud1 3/3
+244, 245, 246, 247	digit 8					cloud2 1/3
+248, 249, 24A, 24B	digit 9					cloud2 2/3
+24c, 24d, 24e, 24f	cursor					cloud2 3/3
+250, 251, 252, 253	"r"						factory 1/4
+254, 255, 256, 257	"e"						factory 2/4
+258, 259, 25a, 25b	"s"						factory 3/4
+25c, 25d, 25e, 25f	"t"						factory 4/4
+260, 261, 262, 263	"a"						brokenfactory1 1/2 row a
+264, 265, 266, 267	"r"						brokenfactory1 2/2 row a
+268, 269, 26a, 26b	"t"						brokenfactory2 1/2 row b
+26c, 26d, 26e, 26f	"button"				brokenfactory2 2/2 row b
+270, 271, 272, 273	"arrow"					plane1 1/4
+274, 275, 276, 277							plane1 2/4
+278, 279, 27a, 27b							plane1 3/4
+27c, 27d, 27e, 27f							plane1 4/4
+280, 281, 282, 283							plane2 1/4 with lights
+284, 285, 286, 287							plane2 2/4 with lights
+288, 289, 28a, 28b							plane2 3/4 with lights
+28c, 28d, 28e, 28f							plane2 4/4 with lights
+290, 291, 292, 293
+294, 295, 296, 297
+298, 299, 29a, 29b
+29c, 29d, 29e, 29f
+300, 301, 302, 303
+304, 305, 306, 307
+308, 309, 30a, 30b
+30c, 30d, 30e, 30f
+					bouncing ball?
+
+
 
 tiefighter
 4A 4B
