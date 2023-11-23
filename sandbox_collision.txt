@@ -1,27 +1,5 @@
-collision
 
-
-;pixel perfect:
-
-;[check collisions]
-  lda player_x
-  cmp enemy_x
-  bne clear
-  lda player_y
-  cmp enemy_y
-  bne clear
-  ;collision has occured
-  clc
-  lda player_h
-  cmp enemy_h
-  bmi dead
-  ;enemy destroyed and survived
-  ;set enemy alive status to 0
-  jmp clear
-  
-  
-  
-  ; approximation
+  ; collision approximation
 
 cld
 lda #$00
