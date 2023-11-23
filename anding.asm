@@ -1,14 +1,19 @@
-lda #$0
-sta $0
-start:
-ldx $0
-txa
-;and #$7
-clc
-adc #$1
-and #$7
-tax
-stx $0
+  inc restartloopcounter
+  lda restartloopcounter
+  cmp #$6
+  bne skip
 
+  lda arrowmove
+  clc
+  adc #$1
+  and #$7
+  sta arrowmove
 
-jmp start
+  lda #$89
+  clc
+  sbc arrowmove
+  sta $24b
+  lda #$0
+  sta restartloopcounter
+  
+skip:

@@ -23,11 +23,11 @@
 254, 255, 256, 257							factory 2/4
 258, 259, 25a, 25b							factory 3/4
 25c, 25d, 25e, 25f							factory 4/4
-260, 261, 262, 263						brokenfactory1 1/2 row a
+260, 261, 262, 263							brokenfactory1 1/2 row a
 264, 265, 266, 267							brokenfactory1 2/2 row a
 268, 269, 26a, 26b							brokenfactory2 1/2 row b
-26c, 26d, 26e, 26f					brokenfactory2 2/2 row b
-270, 271, 272, 273						plane1 1/4
+26c, 26d, 26e, 26f					 		brokenfactory2 2/2 row b
+270, 271, 272, 273							plane1 1/4
 274, 275, 276, 277							plane1 2/4
 278, 279, 27a, 27b							plane1 3/4
 27c, 27d, 27e, 27f							plane1 4/4
