@@ -1,0 +1,29 @@
+define player_alive $0
+
+lda #$1
+sta player_alive
+
+bit player_alive
+bne ok
+jmp notok
+
+ok:
+lda #$5 ; green
+sta $210
+sta $211
+sta $230
+sta $231
+jmp end
+
+
+notok:
+lda #$2 ; red
+sta $210
+sta $211
+sta $230
+sta $231
+jmp end
+
+
+end:
+brk
