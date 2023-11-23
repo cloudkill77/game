@@ -27,6 +27,9 @@ lda #$64
 sta player_h
 lda #$60
 sta enemy_h
+lda #$1
+sta player_alive
+sta enemy_alive
 
 ;[check collisions]
 lda player_y
@@ -74,7 +77,7 @@ jmp end
 dead:
 lda #$0
 sta player_alive
-lda #$b
+lda #$b ; grey
 sta $200
 
 
