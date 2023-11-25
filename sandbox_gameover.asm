@@ -16,6 +16,49 @@ arrowmove .rs 1 ; animate the restart arrow
 buttons1 .rs 1 ; store controller 1 output
 buttons2 .rs 1 ; store controller 2 output
 
+t21 = $D4 ; !
+t2e = $C3 ; .
+t2c = $D3 ; ,
+t0 = $E0 ; 0
+t1 = $E1 ; 1
+t2 = $E2 ; 2
+t3 = $E3 ; 3
+t4 = $E4 ; 4
+t5 = $E5 ; 5
+t6 = $E6 ; 6
+t7 = $E7 ; 7
+t8 = $E8 ; 8
+t9 = $E9 ; 9
+t3e = $C2 ; >
+t3f = $C1 ; ?
+tA = $EA ; A
+tB = $EB ; B
+tC = $EC ; C
+tD = $ED ; D
+tE = $EE ; E
+tF = $EF ; F
+tG = $F0 ; G
+tH = $F1 ; H
+tI = $F2 ; I
+tJ = $F3 ; J
+tK = $F4 ; K
+tL = $F5 ; L
+tM = $F6 ; M
+tN = $F7 ; N
+tO = $F8 ; O
+tP = $F9 ; P
+tQ = $FA ; Q
+tR = $FB ; R
+tS = $FC ; S
+tT = $FD ; T
+tU = $FE ; U
+tV = $FF ; V
+tW = $C0 ; W
+tX = $D0 ; X
+tY = $D1 ; Y
+tZ = $D2 ; Y
+t5f = $D5 ; _
+
 ;;;;;;;;;;;;;;;
 
   .bank 0
@@ -81,7 +124,7 @@ LoadSpritesLoop:
   LDA sprites, x        ; load data from address (sprites +  x)
   STA $0200, x          ; store into RAM address ($0200 + x)
   INX                   ; X = X + 1
-  CPX #$3c              ; Compare X to hex $80, decimal 128. loads the first 128 bytes of sprites (32 sprites)
+  CPX #$50              ; Compare X to hex $80, decimal 128. loads the first 128 bytes of sprites (32 sprites)
   BNE LoadSpritesLoop   ; Branch to LoadSpritesLoop if compare was Not Equal to zero
                         ; if compare was equal to zero, keep going down
 
@@ -141,7 +184,6 @@ ppu:
   LDA #$00 ; there is no scrolling at end of nmi
   STA $2005
   STA $2005
-
 
 
   
@@ -279,16 +321,7 @@ tombstone:
   .db $90, $03, %00000000, $70 ; tombstone 2/4
   .db $98, $12, %00000000, $68 ; tombstone 3/4
   .db $98, $13, %00000000, $70 ; tombstone 4/4
-;sun:
-;  .db $f0, $40, %00000010, $08 you´ve died.
-;  .db $f0, $41, %00000010, $10 try again?
-;  .db $f0, $42, %00000010, $18
-;  .db $f0, $50, %00000010, $08
-;  .db $f0, $51, %00000000, $10
-;  .db $f0, $52, %00000010, $18
-;  .db $f0, $60, %00000010, $08
-;  .db $f0, $61, %00000010, $10
-;  .db $f0, $62, %00000010, $18
+
 moon:
   .db $20, $a8, %00000000, $20 ; moon 1/4
   .db $20, $a9, %00000000, $28 ; moon 2/4
@@ -305,6 +338,8 @@ button:
 arrow:
   .db $a4, $49, %00000000, $88  
 
+	  
+		  
 score:
 
 background1:
@@ -321,10 +356,10 @@ background1:
 background2:
   .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
   .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
+  .db $0F, $0F, $0F, $0F, $0F, tY, tO, tU, $0F, tA, tR, tE, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
+  .db $0F, $0F, $0F, $0F, $0F, tD, tE, tA, tD, t2e, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
   .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
-  .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
-  .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
-  .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
+  .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, tR, tE, tT, tR, tY, t3f, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
   .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
   .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
 
@@ -350,13 +385,6 @@ background4:
 attribute:
   .db %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
  
-regs:
-  .byte $30,$08,$00,$00
-  .byte $30,$08,$00,$00
-  .byte $80,$00,$00,$00
-  .byte $30,$00,$00,$00
-  .byte $00,$00,$00,$00
-		
 
 ;;;;;;;;;;;;;;  
 
