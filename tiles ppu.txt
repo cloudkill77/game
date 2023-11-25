@@ -46,8 +46,8 @@
 					bouncing ball?
 
 gameover with moon:
-  .db $0d,$19,$15,$09	;background palette 1 - 0d-black,19-green,15-red (not used),09-dark green
-  .db $0d,$10,$00,$30	;sprite palette 1  ; 0d-black,10-light grey,00-grey,30-white
+  .db $0f,$19,$15,$09	;background palette 1 - 0f-black,19-green,15-red (not used),09-dark green
+  .db $0f,$10,$00,$30	;sprite palette 1  ; 0f-black,10-light grey,00-grey,30-white
   
 200 y
 201 tile
