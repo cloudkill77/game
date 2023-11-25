@@ -2,7 +2,7 @@
   .ineschr 1   ; 1x  8KB CHR data
   .inesmap 0   ; mapper 0 = NROM, no bank swapping
   .inesmir 1   ; background mirroring
-                                   
+  
 
 ;;;;;;;;;;;;;;;
 
@@ -15,6 +15,7 @@ restart_bit .rs 1 ; restart after crash
 arrowmove .rs 1 ; animate the restart arrow
 buttons1 .rs 1 ; store controller 1 output
 buttons2 .rs 1 ; store controller 2 output
+
 ;;;;;;;;;;;;;;;
 
   .bank 0
@@ -56,7 +57,6 @@ vblankwait2:      ; Second wait for vblank, PPU is ready after this
 				  ; accordingly without affecting Accumulator
   BPL vblankwait2 ; If Negative flag is clear, branch to vblankwait2
 
-
 LoadPalettes:
   LDA $2002             ; read PPU status to reset the high/low latch
   LDA #$3F
@@ -72,10 +72,9 @@ LoadPalettesLoop:
                           ; etc
   STA $2007             ; write to PPU
   INX                   ; X = X + 1
-  CPX #$20              ; Compare X to hex $10, decimal 16 - copying 16 bytes = 4 sprites
+  CPX #$20              ; Compare X to hex $20, decimal 32 - copying 32 bytes = 4 for sprites, 4 for background
   BNE LoadPalettesLoop  ; Branch to LoadPalettesLoop if compare was Not Equal to zero
                         ; if compare was equal to 32, keep going down
-
 
   LDX #$00
 LoadSpritesLoop:
@@ -123,25 +122,8 @@ LoadBackgroundLoop4:
   CPX #$a0           ; Compare X to hex $80, decimal 128 - copying 128 bytes
   BNE LoadBackgroundLoop4  ; Branch to LoadBackgroundLoop if compare was Not Equal to zero
 
-
-
-LoadAttribute:
-  LDA $2002             ; read PPU status to reset the high/low latch
-  LDA #$23
-  STA $2006             ; write the high byte of $23C0 address
-  LDA #$C0
-  STA $2006             ; write the low byte of $23C0 address
-  LDX #$00              ; start out at 0
-LoadAttributeLoop:
-  LDA attribute, x      ; load data from address (attribute + the value in x)
-  STA $2007             ; write to PPU
-  INX                   ; X = X + 1
-  CPX #$08              ; Compare X to hex $08, decimal 8 - copying 8 bytes
-  BNE LoadAttributeLoop
   
   
-
-
 ppu: 
 ; PPU registers  
   LDA #%10000000   ; enable NMI, sprite size 8x8, sprites from Pattern Table 0, base nametable address $2000
@@ -159,16 +141,33 @@ ppu:
   LDA #$00 ; there is no scrolling at end of nmi
   STA $2005
   STA $2005
- 
 
 
+
+  
   
 Foreverloop:
 
-  
-
   JMP Foreverloop     ;jump back to Forever, infinite loop
 
+audio1:
+  lda #%00000011
+  ; 7,6 - not used
+  ; 5 - envelope loop / length counter halt
+  ; 4 - constant volume
+  ; 3,2,1,0 - volume/envelope
+  sta $400C  
+  lda #%00000110
+  ; 7 - loop noise
+  ; 6,5,4 - not used
+  ; 3,2,1,0 - noise period
+  sta $400E
+  lda #%01111000
+  ; 7,6,5,4,3 - length counter load
+  sta $400F
+  rts
+
+init_apu:
 init_apu: ; resets audio?
   lda #$00
   sta $4015
@@ -179,6 +178,7 @@ init_apu: ; resets audio?
   sta $4017  
   rts
 
+  
 ; read controller subroutine. called from within NMI
 ReadController:
 
@@ -196,16 +196,6 @@ ReadControllerLoop:
   DEX
   BNE ReadControllerLoop
   RTS
- 
-;2 -- sun
-;4 -- clouds
-;7 -- factory
-;22 
-;25 
-;26 ---
-
-
- 
 
 NMI: 
 ; [RENDER]  
@@ -214,91 +204,30 @@ NMI:
   LDA #$02
   STA $4014       ; set the high byte (02) of the RAM address, start the transfer
 
-
-
-;  jsr ReadController
-
-
-
-; sequence is *always* A, B, Select, Start, Up, Down, Left, Right. Controller 1: $4016, Controller 2: $4017
-
-ReadA: 
-  LDA $4016       ; player 1 - A
-  AND #%00000001  ; only look at bit 0
-  BEQ ReadADone   ; branch to ReadADone if button is NOT pressed (0)
-                  ; add instructions here to do something when button IS pressed (1)
-
-ReadADone:        ; handling this button is done
-
-ReadB: 
-  LDA $4016       ; player 1 - B
-  AND #%00000001  ; only look at bit 0
-  BEQ ReadBDone   ; branch to ReadBDone if button is NOT pressed (0)
-                  ; add instructions here to do something when button IS pressed (1)
-
-ReadBDone:        ; handling this button is done
+  jsr ReadController
 
 ReadSelect: 
-  LDA $4016       ; player 1 - Select
-  AND #%00000001  ; only look at bit 0
+  LDA buttons1       ; load player 1 - buttons
+  AND #%00100000  ; only look at bit 5
   BEQ ReadSelectDone   ; branch to ReadSelectDone if button is NOT pressed (0)
   jmp RESET
-
 ReadSelectDone:
 
 ReadStart: 
-  LDA $4016       ; player 1 - Start
-  AND #%00000001  ; only look at bit 0
+  LDA buttons1       ; load player 1 - buttons
+  AND #%00010000  ; only look at bit 4
   BEQ ReadStartDone   ; branch to ReadStartDone if button is NOT pressed (0)
  
+  jsr init_apu
+
+  jsr audio1
   
-  lda #%00000011
-  ; 7,6 - not used
-  ; 5 - envelope loop / length counter halt
-  ; 4 - constant volume
-  ; 3,2,1,0 - volume/envelope
-  sta $400C  
-  lda #%00000110
-  ; 7 - loop noise
-  ; 6,5,4 - not used
-  ; 3,2,1,0 - noise period
-  sta $400E
-  lda #%01111000
-  ; 7,6,5,4,3 - length counter load
-  sta $400F  
+   
   
   
 ReadStartDone:
 
-ReadUp: 
-  LDA $4016       ; player 1 - Up
-  AND #%00000001  ; only look at bit 0
-  BEQ ReadUpDone   ; branch to ReadUpDone if button is NOT pressed (0)
-
-ReadUpDone:
-
-ReadDown: 
-  LDA $4016       ; player 1 - Down
-  AND #%00000001  ; only look at bit 0
-  BEQ ReadDownDone   ; branch to ReadDownDone if button is NOT pressed (0)
-
-ReadDownDone:
-
-ReadLeft: 
-  LDA $4016       ; player 1 - Left
-  AND #%00000001  ; only look at bit 0
-  BEQ ReadLeftDone   ; branch to ReadLeftDone if button is NOT pressed (0)
-
-ReadLeftDone:
-
-ReadRight: 
-  LDA $4016       ; player 1 - Right
-  AND #%00000001  ; only look at bit 0
-  BEQ ReadRightDone ; branch to ReadRightDone if button is NOT pressed (0)
-  
-ReadRightDone:
-
-  jmp skip
+;  jmp skip
   inc restartloopcounter
   lda restartloopcounter
   cmp #$8
@@ -319,37 +248,27 @@ ReadRightDone:
   
 skip:
 
-  	
-nmi_end2:
-	
+
   RTI
+
 
 ;;;;;;;;;;;;;;  
 
   .bank 1
   .org $E000
+  
+; info for palettes, sprites and background, called during initialization
+
+
 palette:
-  .db $0f,$19,$15,$09	;background palette 1 - 0d-black,19-green,15-red (not used),09-dark green
-  .db $27,$36,$17,$11	;background palette 2 $22,$36,$17,$0D
-  .db $27,$30,$21,$0f	;background palette 3
-  .db $27,$27,$17,$0f	;background palette 4
-  .db $0f,$10,$00,$30	;sprite palette 1  ; 0d-black,10-light grey,00-grey,30-white
-  .db $27,$16,$27,$28	;sprite palette 2 - fire
-  .db $27,$07,$30,$27	;sprite palette 2
-  .db $27,$16,$30,$27	;sprite palette 3
-
-
-	
-
-
-;  76543210
-;  ||||||||
-;  ||||||++- Palette (4 to 7) of sprite
-;  |||+++--- Unimplemented (read 0)
-;  ||+------ Priority (0: in front of background; 1: behind background)
-;  |+------- Flip sprite horizontally
-;  +-------- Flip sprite vertically
-
+  .db $0f,$19,$09,$21	;background palette 1 - 0f-black,19-green,09-dark green,21-light blue
+  .db $0f,$22,$27,$10	;background palette 2 $22,$36,$17,$0D
+  .db $0f,$21,$05,$01	;background palette 3
+  .db $0f,$28,$27,$21	;background palette 4
+  .db $0f,$10,$00,$30	;sprite palette 1  ; 0f-black,10-light grey,00-grey,30-white
+  .db $0f,$22,$27,$10	;sprite palette 2 - fire
+  .db $0f,$21,$05,$01	;sprite palette 2
+  .db $0f,$2a,$09,$07	;sprite palette 3
 
 sprites:
 s3:
@@ -361,8 +280,8 @@ tombstone:
   .db $98, $12, %00000000, $68 ; tombstone 3/4
   .db $98, $13, %00000000, $70 ; tombstone 4/4
 ;sun:
-;  .db $f0, $40, %00000010, $08
-;  .db $f0, $41, %00000010, $10
+;  .db $f0, $40, %00000010, $08 you´ve died.
+;  .db $f0, $41, %00000010, $10 try again?
 ;  .db $f0, $42, %00000010, $18
 ;  .db $f0, $50, %00000010, $08
 ;  .db $f0, $51, %00000000, $10
@@ -387,20 +306,6 @@ arrow:
   .db $a4, $49, %00000000, $88  
 
 score:
-
-
-;  76543210
-;  ||||||||
-;  ||||||++- Palette (4 to 7) of sprite
-;  |||+++--- Unimplemented (read 0)
-;  ||+------ Priority (0: in front of background; 1: behind background)
-;  |+------- Flip sprite horizontally
-;  +-------- Flip sprite vertically
-
-
-
-  
-
 
 background1:
   .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
@@ -442,18 +347,16 @@ background4:
   .db $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F
   .db $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F
 
-
-
 attribute:
   .db %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000, %00000000
  
-
-
-;sun
-; 40 41 42
-; 50 51 52
-; 60 61 62
-
+regs:
+  .byte $30,$08,$00,$00
+  .byte $30,$08,$00,$00
+  .byte $80,$00,$00,$00
+  .byte $30,$00,$00,$00
+  .byte $00,$00,$00,$00
+		
 
 ;;;;;;;;;;;;;;  
 
@@ -469,3 +372,4 @@ attribute:
   .bank 2
   .org $0000
   .incbin "game.chr"   ;includes 8KB graphics file from SMB1 (tm)
+  
