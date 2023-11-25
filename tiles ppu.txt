@@ -1,19 +1,19 @@
   y,  t#,attr,   x
-200, 201, 202, 203	jeep 1/4				
-204, 205, 206, 207	jeep 2/4				"G"
-208, 209, 20A, 20B	jeep 3/4				"A"
-20c, 20D, 20E, 20F	jeep 4/4				"M"
-210, 211, 212, 213	missile					"E"
-214, 215, 216, 217	tiefighter 1/4			sun 1/9
-218, 219, 21A, 21B	tiefighter 2/4			sun 2/9
-21C, 21D, 21E, 21F	tiefighter 3/4			sun 3/9
-220, 221, 222, 223	tiefighter 4/4			sun 4/9
-224, 225, 226, 227	cursor					sun 5/9
-228, 229, 22A, 22B	"r" 	 				sun 6/9
-22C, 22D, 22E, 22F	"e"						sun 7/9
-230, 231, 232, 233	"s"						sun 8/9
-234, 235, 236, 237	"t"						sun 9/9
-238, 239, 23A, 23B	"a"						cloud1 1/3
+200, 201, 202, 203	jeep 1/4				digit 3 (unused)		digit 3 (unused)
+204, 205, 206, 207	jeep 2/4				"G"						tombstone 1/4	
+208, 209, 20A, 20B	jeep 3/4				"A"						tombstone 2/4
+20c, 20D, 20E, 20F	jeep 4/4				"M"						tombstone 3/4
+210, 211, 212, 213	missile					"E"						tombstone 4/4
+214, 215, 216, 217	tiefighter 1/4			sun 1/9					moon 1/4
+218, 219, 21A, 21B	tiefighter 2/4			sun 2/9					moon 2/4
+21C, 21D, 21E, 21F	tiefighter 3/4			sun 3/9					moon 3/4
+220, 221, 222, 223	tiefighter 4/4			sun 4/9					moon 4/4
+224, 225, 226, 227	cursor					sun 5/9					plane1 1/4
+228, 229, 22A, 22B	"r" 	 				sun 6/9					plane1 2/4
+22C, 22D, 22E, 22F	"e"						sun 7/9					plane1 3/4
+230, 231, 232, 233	"s"						sun 8/9					plane1 4/4
+234, 235, 236, 237	"t"						sun 9/9					button
+238, 239, 23A, 23B	"a"						cloud1 1/3				arrow
 23C, 23D, 23E, 23F	"r"						cloud1 2/3
 240, 241, 242, 243	"t" 					cloud1 3/3
 244, 245, 246, 247	"button"				cloud2 1/3
@@ -45,40 +45,13 @@
 30c, 30d, 30e, 30f
 					bouncing ball?
 
-
-
-tiefighter
-4A 4B
-5A 5B
-
-
+gameover with moon:
+  .db $0d,$19,$15,$09	;background palette 1 - 0d-black,19-green,15-red (not used),09-dark green
+  .db $0d,$10,$00,$30	;sprite palette 1  ; 0d-black,10-light grey,00-grey,30-white
+  
 200 y
 201 tile
 202 attrib
 203 x
 
-204
-205
-206
-207
-
-208
-209
-20A
-20B
-
-20C
-20D
-20E
-20F
-
-210 y
-211 tile
-212 attrib
-213 x
-
-214
-215
-216
-217
 
