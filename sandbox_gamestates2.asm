@@ -187,7 +187,55 @@ LoadSpritesLoop:
   BNE LoadSpritesLoop   ; Branch to LoadSpritesLoop if compare was Not Equal to zero
                         ; if compare was equal to zero, keep going down
 
+LoadINBackground:
+  LDA $2002             ; read PPU status to reset the high/low latch
+  LDA #$20
+  STA $2006             ; write the high byte of $2000 address
+  LDA #$00
+  STA $2006             ; write the low byte of $2000 address
+ 
+  LDX #$00              ; start out at 0
+LoadINBackgroundLoop1:
+  LDA INbackground1, x     ; load data from address (background + the value in x)
+  STA $2007             ; write to PPU
+  INX                   ; X = X + 1
+  CPX #$00           ; Compare X to hex $80, decimal 128 - copying 128 bytes
+  BNE LoadINBackgroundLoop1  ; Branch to LoadBackgroundLoop if compare was Not Equal to zero
+  LDX #$00 
+LoadINBackgroundLoop2:
+  LDA INbackground2, x     ; load data from address (background + the value in x)
+  STA $2007             ; write to PPU
+  INX                   ; X = X + 1
+  CPX #$00           ; Compare X to hex $80, decimal 128 - copying 128 bytes
+  BNE LoadINBackgroundLoop2  ; Branch to LoadBackgroundLoop if compare was Not Equal to zero
+  LDX #$00 
+LoadINBackgroundLoop3:
+  LDA INbackground3, x     ; load data from address (background + the value in x)
+  STA $2007             ; write to PPU
+  INX                   ; X = X + 1
+  CPX #$00           ; Compare X to hex $80, decimal 128 - copying 128 bytes
+  BNE LoadINBackgroundLoop3  ; Branch to LoadBackgroundLoop if compare was Not Equal to zero
+  LDX #$00 
+LoadINBackgroundLoop4:
+  LDA INbackground4, x     ; load data from address (background + the value in x)
+  STA $2007             ; write to PPU
+  INX                   ; X = X + 1
+  CPX #$a0           ; Compare X to hex $80, decimal 128 - copying 128 bytes
+  BNE LoadINBackgroundLoop4  ; Branch to LoadBackgroundLoop if compare was Not Equal to zero
 
+LoadINAttribute:
+  LDA $2002             ; read PPU status to reset the high/low latch
+  LDA #$23
+  STA $2006             ; write the high byte of $23C0 address
+  LDA #$C0
+  STA $2006             ; write the low byte of $23C0 address
+  LDX #$00              ; start out at 0
+LoadINAttributeLoop:
+  LDA INattribute, x      ; load data from address (attribute + the value in x)
+  STA $2007             ; write to PPU
+  INX                   ; X = X + 1
+  CPX #$08              ; Compare X to hex $08, decimal 8 - copying 8 bytes
+  BNE LoadINAttributeLoop
 
 
 
@@ -249,6 +297,12 @@ initloop:
 Foreverloop:
 
   JMP Foreverloop     ;jump back to Forever, infinite loop
+
+
+
+  
+  RTS
+
 
 ; read controller subroutine. called from within NMI
 ReadController1:
@@ -393,7 +447,10 @@ logo_end:   ; branch here if intro has played
   lda framecounter2
   cmp #$6
   bne framecounter2_end ; branch until counter has reached $6
+; load background
 
+
+; enable background
   LDA #%00011110   ; enable sprites, enable background, show sprites in leftmost 8 pixels of screen, show background in leftmost 8 pixels of screen
   STA $2001
   ; 7,6,5 color emphasis (BGR)
@@ -402,6 +459,9 @@ logo_end:   ; branch here if intro has played
   ; 2 sprite left column enable (M)
   ; 1 background left column enable (m)
   ; 0 greyscale (G)
+
+
+
 
 framecounter2_end:
   
