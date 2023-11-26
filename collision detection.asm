@@ -6,14 +6,14 @@ define ycollision $50
 define xcollision $51
 
 store:
+lda #$4
+sta y1 ; (4-220)
 lda #$1
-sta y1 ; (1-224)
+sta x1 ; (4-251)
 lda #$1
-sta x1 ; (1-255)
-lda #$2
-sta y2 ; (1-224)
-lda #$2
-sta x2 ; (1-255)
+sta y2 ; (0-255)
+lda #$1
+sta x2 ; (0-255)
 
 calc_y:
 clc
