@@ -20,10 +20,11 @@ framecounter2 .rs 1  ; $6 count nmi frames. 1 frame per sec
 framecounter3 .rs 1  ; $7 slowly counts up from $0
 counter .rs 1        ; $8 counts down from $ff. 60 frames per sec
 logohasplayed .rs 1  ; $9 intro has played
-g_done .rs 1         ; $A g has done its thing
-planespawn .rs 1     ; $B have the planes been spawned
-skipintro .rs 1      ; $C
-skipintrocount .rs 1 ; $D
+backgroundhasloaded .rs 1 ; $A background has loaded
+g_done .rs 1         ; $B g has done its thing
+planespawn .rs 1     ; $C have the planes been spawned
+skipintro .rs 1      ; $D
+skipintrocount .rs 1 ; $E
 
 ; GAMESTATE READY2GO
 
@@ -183,9 +184,10 @@ LoadSpritesLoop:
   LDA sprites, x        ; load data from address (sprites +  x)
   STA $0200, x          ; store into RAM address ($0200 + x)
   INX                   ; X = X + 1
-  CPX #$f8              ; Compare X to hex $80, decimal 128. loads the first 128 bytes of sprites (32 sprites)
+  CPX #$ff              ; Compare X to hex $80, decimal 128. loads the first 128 bytes of sprites (32 sprites)
   BNE LoadSpritesLoop   ; Branch to LoadSpritesLoop if compare was Not Equal to zero
                         ; if compare was equal to zero, keep going down
+
 
 LoadINBackground:
   LDA $2002             ; read PPU status to reset the high/low latch
@@ -261,21 +263,7 @@ LoadINAttributeLoop:
   STA gamestate
 
 
-ppu: 
-; PPU registers  
-  LDA #%10000000   ; enable NMI, sprite size 8x8, sprites from Pattern Table 0, base nametable address $2000
-  STA $2000
-  LDA #%00010110   ; enable sprites, disable background, show sprites in leftmost 8 pixels of screen, show background in leftmost 8 pixels of screen
-  STA $2001
-  ; 7,6,5 color emphasis (BGR)
-  ; 4 sprite enable (s)
-  ; 3 background enable (b)
-  ; 2 sprite left column enable (M)
-  ; 1 background left column enable (m)
-  ; 0 greyscale (G) 
-  LDA #$00 ; there is no scrolling at end of nmi
-  STA $2005
-  STA $2005
+
 
   ldx #$00
  ; initialize sound registers 
@@ -294,6 +282,24 @@ initloop:
   lda #$40
   sta $4017
 
+ppu: 
+; PPU registers  
+  LDA #%10000000   ; enable NMI, sprite size 8x8, sprites from Pattern Table 0, base nametable address $2000
+  STA $2000
+  LDA #%00010110   ; enable sprites, disable background, show sprites in leftmost 8 pixels of screen, show background in leftmost 8 pixels of screen
+  STA $2001
+  ; 7,6,5 color emphasis (BGR)
+  ; 4 sprite enable (s)
+  ; 3 background enable (b)
+  ; 2 sprite left column enable (M)
+  ; 1 background left column enable (m)
+  ; 0 greyscale (G) 
+  LDA #$00 ; there is no scrolling at end of nmi
+  STA $2005
+  STA $2005
+
+
+
 Foreverloop:
 
   JMP Foreverloop     ;jump back to Forever, infinite loop
@@ -301,7 +307,7 @@ Foreverloop:
 
 
   
-  RTS
+
 
 
 ; read controller subroutine. called from within NMI
@@ -351,25 +357,35 @@ NMI: ; called 60 times per second
 
 ;; PPU cleanup?
 
+
+
   JSR ReadController1
 ; JSR ReadController2  ;;get the current button data for player 2
 
 GameEngine:  
+StateIntro:
   LDA gamestate
   CMP #STATEINTRO
-  BEQ EngineIntro    ;;game is displaying intro screen
-
+  BNE StateReady2Go
+  JMP EngineIntro    ;;game is displaying intro screen
+  
+StateReady2Go:
   LDA gamestate
   CMP #STATEREADY2GO
-  BEQ EngineReady2Go ;; game is ready
-  
+  BNE StatePlaying
+  JMP EngineReady2Go ;; game is ready
+
+StatePlaying:  
   LDA gamestate
   CMP #STATEPLAYING
-  BEQ EnginePlaying   ;;game is playing
-    
+  BNE StateGameOver
+  JMP EnginePlaying   ;;game is playing
+
+StateGameOver:    
   LDA gamestate
   CMP #STATEGAMEOVER
-  BEQ EngineGameOver  ;;game is displaying ending screen
+  BNE GameEngineDone
+  JMP EngineGameOver  ;;game is displaying ending screen
   
 GameEngineDone:  
 
@@ -403,14 +419,6 @@ EngineIntro:
 
 
 
-
-
-
-
-
-
-
-
 runintro: 
 
   lda logohasplayed
@@ -429,8 +437,7 @@ runintro:
   lda #%10011111
   sta $4004
 
-
-  ; move game letters onto screen
+; move game letters onto screen
   lda #$72 ; y-position of g, a, m and e letters
   sta $224 ; g
   sta $228 ; a
@@ -442,13 +449,11 @@ runintro:
 framecounter_end:
 
 
-logo_end:   ; branch here if intro has played  
+logo_end:   ; branch here if logo has played  
 
   lda framecounter2
-  cmp #$6
-  bne framecounter2_end ; branch until counter has reached $6
-; load background
-
+  cmp #$4
+  bne framecounter2a_end ; branch until counter has reached $6
 
 ; enable background
   LDA #%00011110   ; enable sprites, enable background, show sprites in leftmost 8 pixels of screen, show background in leftmost 8 pixels of screen
@@ -459,18 +464,38 @@ logo_end:   ; branch here if intro has played
   ; 2 sprite left column enable (M)
   ; 1 background left column enable (m)
   ; 0 greyscale (G)
+  LDA #$1
+  sta backgroundhasloaded
+
+framecounter2a_end:
+
+  lda framecounter2
+  cmp #$6
+  bne framecounter2b_end ; branch until counter has reached $6
+; prepare for ready2go
 
 
 
 
-framecounter2_end:
+
+framecounter2b_end: ; end of intro state engine
+
+  LDA backgroundhasloaded  ; background has loaded and game can be started
+  CMP #$1
+  BNE ReadStartDone
+ReadStart: 
+  LDA buttons1       ; load player 1 - buttons
+  AND #%00010000  ; only look at bit 4
+  BEQ ReadStartDone   ; branch to ReadStartDone if button is NOT pressed (0)
+  LDA #STATEREADY2GO
+  STA gamestate
+ReadStartDone:
   
   ;;if start button pressed
-  ;;  turn screen off
-  ;;  load game screen
-  ;;  set starting paddle/ball position
-  ;;  go to Playing State
-  ;;  turn screen on
+  ;;  remove Game logo off screen
+  ;;  load pre-game screen
+  ;;  go to ready2go state
+  
   JMP GameEngineDone
 
 
@@ -482,6 +507,53 @@ EngineReady2Go:
   ;;  load title screen
   ;;  go to Title State
   ;;  turn screen on 
+
+; clearscreen
+  ; move game letters off screen
+  lda #$f0 ; y-position of g, a, m and e letters
+  sta $224 ; g
+;  sta $228 ; a
+  sta $22c ; m
+;  sta $230 ; e
+  
+; spawn player
+  lda #$18
+  sta $200
+  sta $204
+  lda #$20
+  sta $208
+  sta $20c
+
+; display ready2go message
+
+  lda #$50 ; y-pos
+  sta $2e4 ; R
+  sta $230 ; E
+  sta $228 ; A
+  sta $2e8 ; D
+  sta $2ec ; Y
+  sta $2f0 ; !
+  lda #$50 ; x-pos
+  sta $2e7 ; R
+  lda #$58
+  sta $233 ; E
+  lda #$60
+  sta $22b ; A
+  lda #$68
+  sta $2eb ; D
+  lda #$70
+  sta $2ef ; Y
+  lda #$78
+  sta $2f3 ; !
+
+  lda #$50
+  sta $2b0 ; A/B Button
+  sta $2b4 ; big arrow  
+  
+  lda #$58
+  sta $2b8 ; A
+  sta $2bc ; B
+  
   JMP GameEngineDone
 
 
@@ -526,22 +598,20 @@ palette:
   .db $0f,$21,$05,$01	;sprite palette 2
   .db $0f,$2a,$09,$07	;sprite palette 3
 
-sprites:  ;; 62
-PLsprites: ;; 9
+
+;     y,   tile,attribute, x
+sprites:
 player:
   .db $f0, $0A, %00000000, $08   ;sprite 1/4: player
   .db $f0, $0B, %00000000, $10   ;sprite 2/4: player
   .db $f0, $1A, %00000000, $08   ;sprite 3/4: player
   .db $f0, $1B, %00000000, $10   ;sprite 4/4: player << collision detection configured on this tile
   .db $f0, $0E, %00000001, $CD   ;missile (y 220, x 205)
-;     y,   tile,attribute, x
 tiefighter:
   .db $f0, $4a, %00000000, $32 ; tiefighter 1/4
   .db $f0, $4b, %00000000, $3a ; tiefighter 2/4
   .db $f0, $5a, %00000000, $32 ; tiefighter 3/4
   .db $f0, $5b, %00000000, $3a ; tiefighter 4/4
-
-INsprites: ;; 39
 game:
   .db $f0, tG, %00000000, $68 ; G
   .db $f0, tA, %00000000, $70 ; A
@@ -579,17 +649,6 @@ INblackplane:
   .db $f0, $2d, %00000000, $8 ; plane1 2/4
   .db $f0, $3c, %00000000, $0 ; plane1 3/4
   .db $f0, $3d, %00000000, $8 ; plane1 4/4
-  .db $f0, $2a, %00000000, $10 ; plane2 1/4 with lights
-  .db $f0, $2b, %00000000, $18 ; plane2 2/4 with lights 
-  .db $f0, $3a, %00000000, $10 ; plane2 3/4 with lights
-  .db $f0, $3b, %00000000, $18 ; plane2 4/4 with lights
-INbutton:
-  .db $f0, $48, %00000000, $90
-INarrow:
-  .db $f0, $49, %00000000, $98  
-INbuttonlabel:  
-  .db $f0, $58, %00000000, $90 ; A
-  .db $f0, $59, %00000000, $98 ; B 
 ;  76543210
 ;  ||||||||
 ;  ||||||++- Palette (4 to 7) of sprite
@@ -598,7 +657,18 @@ INbuttonlabel:
 ;  |+------- Flip sprite horizontally
 ;  +-------- Flip sprite vertically
 
-GOsprites: ;; 14
+plane2:
+  .db $f0, $2a, %00000000, $10 ; plane2 1/4 with lights
+  .db $f0, $2b, %00000000, $18 ; plane2 2/4 with lights 
+  .db $f0, $3a, %00000000, $10 ; plane2 3/4 with lights
+  .db $f0, $3b, %00000000, $18 ; plane2 4/4 with lights
+INbutton_ab:
+  .db $f0, $48, %00000000, $90 ; A/B Button
+INarrowbig:
+  .db $f0, $49, %00000000, $98 ; big arrow
+INbuttonlabel:  
+  .db $f0, $58, %00000000, $8c ; A
+  .db $f0, $59, %00000000, $94 ; B 
 tombstone:
   .db $f0, $02, %00000000, $68 ; tombstone 1/4
   .db $f0, $03, %00000000, $70 ; tombstone 2/4
@@ -609,15 +679,20 @@ moon:
   .db $f0, $a9, %00000000, $28 ; moon 2/4
   .db $f0, $b8, %00000000, $20 ; moon 3/4
   .db $f0, $b9, %00000000, $28 ; moon 4/4
-blackplane: ; second appearance
-  .db $f0, $2c, %00000000, $68 ; plane1 1/4
-  .db $f0, $2d, %00000000, $70 ; plane1 2/4
-  .db $f0, $3c, %00000000, $68 ; plane1 3/4
-  .db $f0, $3d, %00000000, $70 ; plane1 4/4
-button: ; second appearance
+buttonstart: ; 
   .db $f0, $d6, %00000000, $80 ; startbutton
-arrow: ; second appearance
-  .db $f0, $49, %00000000, $88 ; big arrow
+otherletters:
+  .db $f0, tR, %00000000, $58 ; R
+  .db $f0, tD, %00000000, $68 ; D
+  .db $f0, tY, %00000000, $70 ; Y
+  .db $f0, t21, %00000000, $78 ; !
+  .db $f0, tO, %00000000, $80 ; O
+  .db $f0, tV, %00000000, $88 ; V
+  .db $f0, tU, %00000000, $50 ; U
+
+
+
+
 
 INbackground1:
   .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
