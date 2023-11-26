@@ -15,14 +15,14 @@ score1     .rs 1  ; $3 player 1 score, 0-15
 score2     .rs 1  ; $4 player 2 score, 0-15
 
 ; GAMESTATE INTRO
-framecounter1 .rs 1  ;  $5 count nmi frames
-framecounter2 .rs 1  ;  $6 count nmi frames
+framecounter1 .rs 1  ; $5 count nmi frames. 60 frames per sec
+framecounter2 .rs 1  ; $6 count nmi frames. 1 frame per sec
 framecounter3 .rs 1  ; $7 slowly counts up from $0
-counter .rs 1 ; $8 slowly counts down from $ff
-logohasplayed .rs 1; $9 intro has played
-g_done .rs 1 ; $A g has done its thing
-planespawn .rs 1 ; $B have the planes been spawned
-skipintro .rs 1 ; $C
+counter .rs 1        ; $8 counts down from $ff. 60 frames per sec
+logohasplayed .rs 1  ; $9 intro has played
+g_done .rs 1         ; $A g has done its thing
+planespawn .rs 1     ; $B have the planes been spawned
+skipintro .rs 1      ; $C
 skipintrocount .rs 1 ; $D
 
 ; GAMESTATE READY2GO
@@ -217,7 +217,14 @@ ppu:
 ; PPU registers  
   LDA #%10000000   ; enable NMI, sprite size 8x8, sprites from Pattern Table 0, base nametable address $2000
   STA $2000
-   
+  LDA #%00010110   ; enable sprites, disable background, show sprites in leftmost 8 pixels of screen, show background in leftmost 8 pixels of screen
+  STA $2001
+  ; 7,6,5 color emphasis (BGR)
+  ; 4 sprite enable (s)
+  ; 3 background enable (b)
+  ; 2 sprite left column enable (M)
+  ; 1 background left column enable (m)
+  ; 0 greyscale (G) 
   LDA #$00 ; there is no scrolling at end of nmi
   STA $2005
   STA $2005
@@ -351,17 +358,10 @@ EngineIntro:
 
 
 runintro: 
-  LDA #%00010110   ; enable sprites, disable background, show sprites in leftmost 8 pixels of screen, show background in leftmost 8 pixels of screen
-  STA $2001
-  ; 7,6,5 color emphasis (BGR)
-  ; 4 sprite enable (s)
-  ; 3 background enable (b)
-  ; 2 sprite left column enable (M)
-  ; 1 background left column enable (m)
-  ; 0 greyscale (G) 
+
   lda logohasplayed
   cmp #$01    ; 1st run: 0-1=-1
-  beq intro_end ; branch if logohasplayed is 1. only need it to be run once.
+  beq logo_end ; branch if logohasplayed is 1. only need it to be run once.
 
   lda framecounter1
   cmp #$30
@@ -385,9 +385,25 @@ runintro:
   lda #$1
   sta logohasplayed  ; set logohasplayed from 0 to 1, to note that intro has played.
 
-
 framecounter_end:
-intro_end:   ; branch here if intro1 has played  
+
+
+logo_end:   ; branch here if intro has played  
+
+  lda framecounter2
+  cmp #$6
+  bne framecounter2_end ; branch until counter has reached $6
+
+  LDA #%00011110   ; enable sprites, enable background, show sprites in leftmost 8 pixels of screen, show background in leftmost 8 pixels of screen
+  STA $2001
+  ; 7,6,5 color emphasis (BGR)
+  ; 4 sprite enable (s)
+  ; 3 background enable (b)
+  ; 2 sprite left column enable (M)
+  ; 1 background left column enable (m)
+  ; 0 greyscale (G)
+
+framecounter2_end:
   
   ;;if start button pressed
   ;;  turn screen off
