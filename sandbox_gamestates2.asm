@@ -8,22 +8,22 @@
 ;; DECLARE SOME VARIABLES HERE
   .rsset $0000  ;;start variables at ram location 0
   
-gamestate  .rs 1  ; .rs 1 means reserve one byte of space
-buttons1   .rs 1  ; player 1 gamepad buttons, one bit per button
-buttons2   .rs 1  ; player 2 gamepad buttons, one bit per button
-score1     .rs 1  ; player 1 score, 0-15
-score2     .rs 1  ; player 2 score, 0-15
+gamestate  .rs 1  ; $0 .rs 1 means reserve one byte of space
+buttons1   .rs 1  ; $1 player 1 gamepad buttons, one bit per button
+buttons2   .rs 1  ; $2 player 2 gamepad buttons, one bit per button
+score1     .rs 1  ; $3 player 1 score, 0-15
+score2     .rs 1  ; $4 player 2 score, 0-15
 
 ; GAMESTATE INTRO
-framecounter1 .rs 1  ;  $0 count nmi frames
-framecounter2 .rs 1  ;  $1 count nmi frames
-framecounter3 .rs 1  ; $2 slowly counts up from $0
-counter .rs 1 ; $3 slowly counts down from $ff
-logohasplayed .rs 1; $4 intro has played
-g_done .rs 1 ; $5 g has done its thing
-planespawn .rs 1 ; have the planes been spawned
-skipintro .rs 1
-skipintrocount .rs 1
+framecounter1 .rs 1  ;  $5 count nmi frames
+framecounter2 .rs 1  ;  $6 count nmi frames
+framecounter3 .rs 1  ; $7 slowly counts up from $0
+counter .rs 1 ; $8 slowly counts down from $ff
+logohasplayed .rs 1; $9 intro has played
+g_done .rs 1 ; $A g has done its thing
+planespawn .rs 1 ; $B have the planes been spawned
+skipintro .rs 1 ; $C
+skipintrocount .rs 1 ; $D
 
 ; GAMESTATE READY2GO
 
@@ -32,11 +32,11 @@ skipintrocount .rs 1
 ; GAMESTATE PLAYING
 
 ; good sprites:
-player_x  .rs 1  ;  x-pos of player sprite tile 4/4
-player_y  .rs 1  ; y-pos of player sprite tile 4/4
-player_h .rs 1 ; player health
-player_alive .rs 1 ; player is alive if set to 1
-player_l .rs 1 ; player lives
+player_x  .rs 1  ; $E x-pos of player sprite tile 4/4
+player_y  .rs 1  ; $F y-pos of player sprite tile 4/4
+player_h .rs 1   ; $10 player health
+player_alive .rs 1 ; S11 player is alive if set to 1
+player_l .rs 1 ; $12 player lives
 missile_x .rs 1 ; missile x-pos
 missile_y .rs 1 ; missile y-pos
 missile_h .rs 1 ; missile health
@@ -189,9 +189,6 @@ LoadSpritesLoop:
 
 
 
-;;:Set starting game state
-  LDA #STATEINTRO
-  STA gamestate
 
 
 ;; STARTING VARIABLES
@@ -211,26 +208,36 @@ LoadSpritesLoop:
   lda #$1 ; enemy spawn state at beginning
   sta enemy_alive
 
+;;:Set starting game state
+  LDA #STATEINTRO
+  STA gamestate
 
 
 ppu: 
 ; PPU registers  
   LDA #%10000000   ; enable NMI, sprite size 8x8, sprites from Pattern Table 0, base nametable address $2000
   STA $2000
-  
-  LDA #%00011110   ; enable sprites, show sprites in leftmost 8 pixels of screen, show background in leftmost 8 pixels of screen
-  STA $2001
-  ; 7,6,5 color emphasis (BGR)
-  ; 4 sprite enable (s)
-  ; 3 background enable (b)
-  ; 2 sprite left column enable (M)
-  ; 1 background left column enable (m)
-  ; 0 greyscale (G) 
-  
+   
   LDA #$00 ; there is no scrolling at end of nmi
   STA $2005
   STA $2005
 
+  ldx #$00
+ ; initialize sound registers 
+initloop:
+  lda #$00
+  sta $4000, x
+  inx
+  cpx #$14
+  bne initloop
+
+  lda #$00
+  sta $4015
+  lda #$0F
+  sta $4015
+; setup apu frame counter
+  lda #$40
+  sta $4017
 
 Foreverloop:
 
@@ -272,7 +279,7 @@ UpdateSpritePosition:
 
 ;;;;;;;;;;;
 
-NMI: 
+NMI: ; called 60 times per second
 ; [RENDER]  
   LDA #$00
   STA $2003       ; set the low byte (00) of the RAM address
@@ -307,7 +314,18 @@ GameEngineDone:
 
 
   JSR UpdateSpritePosition  ;; setup sprite positions
+  
+  dec counter ; 60 fps counting down
+  inc framecounter1 ; 60 fps counting up
 
+  lda framecounter1
+  cmp #$3c ; compare to decimal 60, hex 3c, (1 second)
+  bne nmi_end ; branch until counter has reached $30
+  inc framecounter2 ; 1 fps counting up
+  lda #$0
+  sta framecounter1 ; reset framecounter1 to 0
+
+nmi_end:
   RTI
 
 ;;;;;;;;;;;;;;;
@@ -315,6 +333,62 @@ GameEngineDone:
 ;;;;;;;;
  
 EngineIntro:
+
+
+
+  lda skipintro ; load skipintro value to check if intro needs to be skipped
+  cmp #$1
+  bne runintro   ; branch to runintro if skipintro is 0
+
+
+
+
+
+
+
+
+
+
+
+runintro: 
+  LDA #%00010110   ; enable sprites, disable background, show sprites in leftmost 8 pixels of screen, show background in leftmost 8 pixels of screen
+  STA $2001
+  ; 7,6,5 color emphasis (BGR)
+  ; 4 sprite enable (s)
+  ; 3 background enable (b)
+  ; 2 sprite left column enable (M)
+  ; 1 background left column enable (m)
+  ; 0 greyscale (G) 
+  lda logohasplayed
+  cmp #$01    ; 1st run: 0-1=-1
+  beq intro_end ; branch if logohasplayed is 1. only need it to be run once.
+
+  lda framecounter1
+  cmp #$30
+  bne framecounter_end ; branch until counter has reached $30
+
+; play game logo jingle
+  lda #130
+  sta $4006
+  lda #200
+  sta $4007
+  lda #%10011111
+  sta $4004
+
+
+  ; move game letters onto screen
+  lda #$72 ; y-position of g, a, m and e letters
+  sta $224 ; g
+  sta $228 ; a
+  sta $22c ; m
+  sta $230 ; e
+  lda #$1
+  sta logohasplayed  ; set logohasplayed from 0 to 1, to note that intro has played.
+
+
+framecounter_end:
+intro_end:   ; branch here if intro1 has played  
+  
   ;;if start button pressed
   ;;  turn screen off
   ;;  load game screen
@@ -379,17 +453,17 @@ palette:
 sprites:  ;; 62
 PLsprites: ;; 9
 player:
-  .db $18, $0A, %00000000, $08   ;sprite 1/4: player
-  .db $18, $0B, %00000000, $10   ;sprite 2/4: player
-  .db $20, $1A, %00000000, $08   ;sprite 3/4: player
-  .db $20, $1B, %00000000, $10   ;sprite 4/4: player << collision detection configured on this tile
-  .db $DC, $0E, %00000001, $CD ; sprite 5: projectile (y 220, x 205)
+  .db $f0, $0A, %00000000, $08   ;sprite 1/4: player
+  .db $f0, $0B, %00000000, $10   ;sprite 2/4: player
+  .db $f0, $1A, %00000000, $08   ;sprite 3/4: player
+  .db $f0, $1B, %00000000, $10   ;sprite 4/4: player << collision detection configured on this tile
+  .db $f0, $0E, %00000001, $CD   ;missile (y 220, x 205)
 ;     y,   tile,attribute, x
 tiefighter:
-  .db $c8, $4a, %00000000, $32 ; tiefighter 1/4
-  .db $c8, $4b, %00000000, $3a ; tiefighter 2/4
-  .db $d0, $5a, %00000000, $32 ; tiefighter 3/4
-  .db $d0, $5b, %00000000, $3a ; tiefighter 4/4
+  .db $f0, $4a, %00000000, $32 ; tiefighter 1/4
+  .db $f0, $4b, %00000000, $3a ; tiefighter 2/4
+  .db $f0, $5a, %00000000, $32 ; tiefighter 3/4
+  .db $f0, $5b, %00000000, $3a ; tiefighter 4/4
 
 INsprites: ;; 39
 game:
@@ -450,24 +524,24 @@ INbuttonlabel:
 
 GOsprites: ;; 14
 tombstone:
-  .db $90, $02, %00000000, $68 ; tombstone 1/4
-  .db $90, $03, %00000000, $70 ; tombstone 2/4
-  .db $98, $12, %00000000, $68 ; tombstone 3/4
-  .db $98, $13, %00000000, $70 ; tombstone 4/4
+  .db $f0, $02, %00000000, $68 ; tombstone 1/4
+  .db $f0, $03, %00000000, $70 ; tombstone 2/4
+  .db $f0, $12, %00000000, $68 ; tombstone 3/4
+  .db $f0, $13, %00000000, $70 ; tombstone 4/4
 moon:
-  .db $20, $a8, %00000000, $20 ; moon 1/4
-  .db $20, $a9, %00000000, $28 ; moon 2/4
-  .db $28, $b8, %00000000, $20 ; moon 3/4
-  .db $28, $b9, %00000000, $28 ; moon 4/4
-blackplane:
-  .db $a0, $2c, %00000000, $68 ; plane1 1/4
-  .db $a0, $2d, %00000000, $70 ; plane1 2/4
-  .db $a8, $3c, %00000000, $68 ; plane1 3/4
-  .db $a8, $3d, %00000000, $70 ; plane1 4/4
-button:
-  .db $a4, $d6, %00000000, $80 ; startbutton
-arrow:
-  .db $a4, $49, %00000000, $88 ; big arrow
+  .db $f0, $a8, %00000000, $20 ; moon 1/4
+  .db $f0, $a9, %00000000, $28 ; moon 2/4
+  .db $f0, $b8, %00000000, $20 ; moon 3/4
+  .db $f0, $b9, %00000000, $28 ; moon 4/4
+blackplane: ; second appearance
+  .db $f0, $2c, %00000000, $68 ; plane1 1/4
+  .db $f0, $2d, %00000000, $70 ; plane1 2/4
+  .db $f0, $3c, %00000000, $68 ; plane1 3/4
+  .db $f0, $3d, %00000000, $70 ; plane1 4/4
+button: ; second appearance
+  .db $f0, $d6, %00000000, $80 ; startbutton
+arrow: ; second appearance
+  .db $f0, $49, %00000000, $88 ; big arrow
 
 INbackground1:
   .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
