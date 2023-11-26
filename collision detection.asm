@@ -35,7 +35,7 @@ lda y1
 cmp y2
 beq yless2 
 
-jmp calc_x
+jmp calc_x ; perform x calc regardless if no collision on y
 
 yless2:
 lda #$1
