@@ -7,13 +7,13 @@ define xcollision $51
 
 store:
 lda #$1
-sta y1
+sta y1 ; (1-224)
 lda #$1
-sta x1
+sta x1 ; (1-255)
 lda #$2
-sta y2
+sta y2 ; (1-224)
 lda #$2
-sta x2
+sta x2 ; (1-255)
 
 calc_y:
 clc
@@ -29,6 +29,11 @@ sbc y1
 sta $30
 cmp #$2
 bcc yless2
+
+clc
+lda y1
+cmp y2
+beq yless2 
 
 jmp calc_x
 
@@ -50,6 +55,11 @@ sbc x1
 sta $31
 cmp #$2
 bcc xless2
+
+clc
+lda x1
+cmp x2
+beq xless2
 
 jmp end
 
