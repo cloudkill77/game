@@ -4,6 +4,7 @@ define y2 $10
 define x2 $11
 define ycollision $50
 define xcollision $51
+define p 3
 
 store:
 lda #$4
@@ -20,23 +21,23 @@ sec
 lda y1
 sbc y2
 sta $20
-cmp #$2
-bcc yless2
+cmp #p
+bcc ylessp
 
 sec
 lda y2
 sbc y1
 sta $30
-cmp #$2
-bcc yless2
+cmp #p
+bcc ylessp
 
 lda y1
 cmp y2
-beq yless2 
+beq ylessp
 
 jmp calc_x ; perform x calc regardless if no collision on y
 
-yless2:
+ylessp:
 lda #$1
 sta ycollision
 
@@ -45,23 +46,23 @@ sec
 lda x1
 sbc x2
 sta $21
-cmp #$2
-bcc xless2
+cmp #p
+bcc xlessp
 
 sec
 lda x2
 sbc x1
 sta $31
-cmp #$2
-bcc xless2
+cmp #p
+bcc xlessp
 
 lda x1
 cmp x2
-beq xless2
+beq xlessp
 
 jmp end
 
-xless2:
+xlessp:
 lda #$1
 sta xcollision
 
