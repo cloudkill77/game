@@ -1,57 +1,74 @@
-  y,  t#,attr,   x
-200, 201, 202, 203	jeep 1/4				digit 3 (unused)		digit 3 (unused)
-204, 205, 206, 207	jeep 2/4				"G"						tombstone 1/4	
-208, 209, 20A, 20B	jeep 3/4				"A"						tombstone 2/4
-20c, 20D, 20E, 20F	jeep 4/4				"M"						tombstone 3/4
-210, 211, 212, 213	missile					"E"						tombstone 4/4
-214, 215, 216, 217	tiefighter 1/4			sun 1/9					moon 1/4
-218, 219, 21A, 21B	tiefighter 2/4			sun 2/9					moon 2/4
-21C, 21D, 21E, 21F	tiefighter 3/4			sun 3/9					moon 3/4
-220, 221, 222, 223	tiefighter 4/4			sun 4/9					moon 4/4
-224, 225, 226, 227	cursor					sun 5/9					plane1 1/4
-228, 229, 22A, 22B	"r" 	 				sun 6/9					plane1 2/4
-22C, 22D, 22E, 22F	"e"						sun 7/9					plane1 3/4
-230, 231, 232, 233	"s"						sun 8/9					plane1 4/4
-234, 235, 236, 237	"t"						sun 9/9					button
-238, 239, 23A, 23B	"a"						cloud1 1/3				arrow
-23C, 23D, 23E, 23F	"r"						cloud1 2/3
-240, 241, 242, 243	"t" 					cloud1 3/3
-244, 245, 246, 247	"button"				cloud2 1/3
-248, 249, 24A, 24B	"arrow"					cloud2 2/3
-24c, 24d, 24e, 24f							cloud2 3/3
-250, 251, 252, 253							factory 1/4
-254, 255, 256, 257							factory 2/4
-258, 259, 25a, 25b							factory 3/4
-25c, 25d, 25e, 25f							factory 4/4
-260, 261, 262, 263							brokenfactory1 1/2 row a
-264, 265, 266, 267							brokenfactory1 2/2 row a
-268, 269, 26a, 26b							brokenfactory2 1/2 row b
-26c, 26d, 26e, 26f					 		brokenfactory2 2/2 row b
-270, 271, 272, 273							plane1 1/4
-274, 275, 276, 277							plane1 2/4
-278, 279, 27a, 27b							plane1 3/4
-27c, 27d, 27e, 27f							plane1 4/4
-280, 281, 282, 283							plane2 1/4 with lights
-284, 285, 286, 287							plane2 2/4 with lights
-288, 289, 28a, 28b							plane2 3/4 with lights
-28c, 28d, 28e, 28f							plane2 4/4 with lights
-290, 291, 292, 293
-294, 295, 296, 297
-298, 299, 29a, 29b
-29c, 29d, 29e, 29f
-300, 301, 302, 303
-304, 305, 306, 307
-308, 309, 30a, 30b
-30c, 30d, 30e, 30f
-					bouncing ball?
-
-gameover with moon:
-  .db $0f,$19,$15,$09	;background palette 1 - 0f-black,19-green,15-red (not used),09-dark green
-  .db $0f,$10,$00,$30	;sprite palette 1  ; 0f-black,10-light grey,00-grey,30-white
-  
-200 y
-201 tile
-202 attrib
-203 x
-
-
+  y,  t#,attr,   x				
+200, 201, 202, 203	jeep 1/4			
+204, 205, 206, 207	jeep 2/4			
+208, 209, 20A, 20B	jeep 3/4			
+20c, 20D, 20E, 20F	jeep 4/4			
+210, 211, 212, 213	missile			
+214, 215, 216, 217	tiefighter 1/4			
+218, 219, 21A, 21B	tiefighter 2/4			
+21C, 21D, 21E, 21F	tiefighter 3/4			
+220, 221, 222, 223	tiefighter 4/4			
+224, 225, 226, 227	G			
+228, 229, 22A, 22B	A	 		
+22C, 22D, 22E, 22F	M			
+230, 231, 232, 233	E			
+234, 235, 236, 237	sun 1/9			
+238, 239, 23A, 23B	sun 2/9			
+23C, 23D, 23E, 23F	sun 3/9			
+240, 241, 242, 243	sun 4/9			
+244, 245, 246, 247	sun 5/9			
+248, 249, 24A, 24B	sun 6/9			
+24c, 24d, 24e, 24f	sun 7/9			
+250, 251, 252, 253	sun 8/9			
+254, 255, 256, 257	sun 9/9			
+258, 259, 25a, 25b	cloud1 1/3			
+25c, 25d, 25e, 25f	cloud1 2/3			cursor
+260, 261, 262, 263	cloud1 3/3			r 
+264, 265, 266, 267	cloud2 1/3			e
+268, 269, 26a, 26b	cloud2 2/3			s
+26c, 26d, 26e, 26f	cloud2 3/3			t
+270, 271, 272, 273	factory 1/4			a
+274, 275, 276, 277	factory 2/4			r
+278, 279, 27a, 27b	factory 3/4			t 
+27c, 27d, 27e, 27f	factory 4/4			button
+280, 281, 282, 283	brokenfactory1 1/2 row a			arrow
+284, 285, 286, 287	brokenfactory1 2/2 row a			
+288, 289, 28a, 28b	brokenfactory2 1/2 row b			
+28c, 28d, 28e, 28f	brokenfactory2 2/2 row b			
+290, 291, 292, 293	plane1 1/4			
+294, 295, 296, 297	plane1 2/4			
+298, 299, 29a, 29b	plane1 3/4			
+29c, 29d, 29e, 29f	plane1 4/4			
+300, 301, 302, 303	plane2 1/4 with lights			
+304, 305, 306, 307	plane2 2/4 with lights			
+308, 309, 30a, 30b	plane2 3/4 with lights			
+30c, 30d, 30e, 30f	plane2 4/4 with lights			
+310, 311, 312, 313	button			bouncing ball?
+314, 315, 316, 317	arrow			
+318, 319, 31a, 31b	buttonlabel A			
+31c, 31d, 31e, 31f	buttonlabel B			
+320, 321, 322, 323	tombstone 1/4			
+324, 325, 326, 327	tombstone 2/4			
+328, 329, 33a, 33b	tombstone 3/4			
+33c, 33d, 33e, 33f	tombstone 4/4			
+340, 341, 342, 343	moon 1/4			
+344, 345, 346, 347	moon 2/4			
+348, 349, 34a, 34b	moon 3/4			
+34c, 34d, 34e, 34f	moon 4/4			
+350, 351, 352, 353				
+354, 355, 356, 357				
+358, 359, 35a, 35b				
+35c, 35d, 35e, 35f				
+360, 361, 362, 363				
+364, 365, 366, 367				
+368, 369, 36a, 36b				
+36c, 36d, 36e, 36f				
+				
+gameover with moon:				
+  .db $0f,$19,$15,$09	;background palette 1 - 0f-black,19-green,15-red (not used),09-dark green			
+  .db $0f,$10,$00,$30	;sprite palette 1  ; 0f-black,10-light grey,00-grey,30-white			
+  				
+200 y				
+201 tile				
+202 attrib				
+203 x				
