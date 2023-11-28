@@ -25,6 +25,7 @@ g_done .rs 1         ; $B g has done its thing
 planespawn .rs 1     ; $C have the planes been spawned
 skipintro .rs 1      ; $D
 skipintrocount .rs 1 ; $E
+game_active .rs 1 ; $F is gameplay currently active
 
 ; GAMESTATE READY2GO
 
@@ -243,6 +244,10 @@ LoadINAttributeLoop:
 
 ;; STARTING VARIABLES
 ;good sprites
+  lda #$70
+  sta player_y
+  lda #$10
+  sta player_x
   lda #$64 ; 100 health
   sta player_h
   lda #$5 ; 5 lives
@@ -334,13 +339,21 @@ DrawScore:
   RTS
   
 UpdateSpritePosition:
-;  LDA player_y  ;;update all sprite coordinates
-;  STA $020c
-  
-;  LDA player_x  
-;  STA $020f
-  
-    
+  LDA player_y
+  STA $0208 ; write to y-pos of sprite 3/4
+  STA $020C ; write to y-pos of sprite 4/4
+  CLC ; clear carry
+  SBC #$7 ; account for shift of tile location in *.chr . add #$8 to x
+  STA $0200 ; write to y-pos of sprite 1/4
+  STA $0204 ; write to y-pos of sprite 2/4
+
+  LDA player_x
+  STA $0207 ; x-pos of sprite 2/4
+  STA $020F ; x-pos of sprite 4/4
+  CLC
+  SBC #$7
+  STA $0203 ; x-pos of sprite 1/4
+  STA $020B ; x-pos of sprite 3/4
   RTS
   
 
@@ -390,7 +403,7 @@ StateGameOver:
 GameEngineDone:  
 
 
-  JSR UpdateSpritePosition  ;; setup sprite positions
+
   
   dec counter ; 60 fps counting down
   inc framecounter1 ; 60 fps counting up
@@ -512,20 +525,42 @@ EngineReady2Go:
   ; move game letters off screen
   lda #$f0 ; y-position of g, a, m and e letters
   sta $224 ; g
-;  sta $228 ; a
   sta $22c ; m
-;  sta $230 ; e
   
-; spawn player
-  lda #$18
-  sta $200
-  sta $204
-  lda #$20
-  sta $208
-  sta $20c
+; spawn player tiles offscreen
+  lda #$f0 ; y-pos
+  sta $200 ; tile 1/4
+  sta $204 ; tile 2/4
+  lda #$f0
+  sta $208 ; tile 3/4
+  sta $20c ; tile 4/4 <-- collision tracking
+  lda #$f0 ; x-pos
+  sta $203 ; tile 1/4
+  sta $20b ; tile 3/4
+  lda #$f0 
+  sta $207 ; tile 2/4
+  sta $20f ; tile 4/4
+
+; move player on screen
+  
+  LDA player_y
+  STA $0208 ; write to y-pos of sprite 3/4
+  STA $020C ; write to y-pos of sprite 4/4
+  CLC ; clear carry
+  SBC #$7 ; account for shift of tile location in *.chr . add #$8 to x
+  STA $0200 ; write to y-pos of sprite 1/4
+  STA $0204 ; write to y-pos of sprite 2/4
+
+  LDA player_x
+  STA $0207 ; x-pos of sprite 2/4
+  STA $020F ; x-pos of sprite 4/4
+  CLC
+  sbc #$7
+  STA $0203 ; x-pos of sprite 1/4
+  STA $020B ; x-pos of sprite 3/4
+
 
 ; display ready2go message
-
   lda #$50 ; y-pos
   sta $2e4 ; R
   sta $230 ; E
@@ -546,13 +581,36 @@ EngineReady2Go:
   lda #$78
   sta $2f3 ; !
 
-  lda #$50
+  lda #$50 ; y-pos
   sta $2b0 ; A/B Button
   sta $2b4 ; big arrow  
   
-  lda #$58
+  lda #$58 ; y-pos
   sta $2b8 ; A
   sta $2bc ; B
+
+  lda #$1
+  sta planespawn ; plane has been spawned
+
+  LDA planespawn  ; background has loaded and game can be started
+  CMP #$1
+  BNE ReadBDone
+ReadA: 
+  LDA buttons1       ; load player 1 - buttons
+  AND #%10000000  ; only look at bit 7
+  BEQ ReadADone   ; branch to ReadADone if button is NOT pressed (0)
+  LDA #STATEPLAYING
+  STA gamestate
+ReadADone:
+ReadB: 
+  LDA buttons1       ; load player 1 - buttons
+  AND #%01000000  ; only look at bit 6
+  BEQ ReadBDone   ; branch to ReadBDone if button is NOT pressed (0)
+  LDA #STATEPLAYING
+  STA gamestate
+ReadBDone:
+
+
   
   JMP GameEngineDone
 
@@ -562,6 +620,95 @@ EngineReady2Go:
  
 EnginePlaying:
 
+  LDA game_active
+  CMP #$1
+  BEQ active
+; clear screen (run once)
+; start stuff
+  lda #$F0
+  sta $2e4 ; R
+  sta $230 ; E
+  sta $228 ; A
+  sta $2e8 ; D
+  sta $2ec ; Y
+  sta $2f0 ; !
+  sta $2b0 ; A/B Button
+  sta $2b4 ; big arrow  
+  sta $2b8 ; A
+  sta $2bc ; B
+  lda #$1
+  sta game_active
+ 
+
+active:
+
+
+  LDA buttons1       ; load player 1 - buttons
+  AND #%00001000  ; only look at bit 3
+  BEQ ReadUpDone   ; branch to ReadUpDone if button is NOT pressed (0)
+; move guy up 
+  LDA player_y
+  CMP #$b ; 
+  BEQ ReadUpDone ; if equal to zero, go to readupdone
+  DEC player_y
+  STA $0208 ; write to y-pos of sprite 3/4
+  STA $020C ; write to y-pos of sprite 4/4
+  CLC ; clear carry
+  SBC #$7 ; account for shift of tile location in *.chr . add #$8 to x
+  STA $0200 ; write to y-pos of sprite 1/4
+  STA $0204 ; write to y-pos of sprite 2/4
+ReadUpDone:
+
+  LDA buttons1       ; load player 1 - buttons
+  AND #%00000100  ; only look at bit 2
+  BEQ ReadDownDone   ; branch to ReadDownDone if button is NOT pressed (0)
+; move guy down 
+  LDA player_y 
+  CMP #$E3 ; ; if it has exceeded y position of xxx, ignore further movement in y axis downwards
+  BEQ ReadDownDone ; if equal to zero, go to readdowndone
+  INC player_y
+  STA $0208 ; write to y-pos of sprite 3/4
+  STA $020C ; write to y-pos of sprite 4/4
+  CLC
+  SBC #$7
+  STA $0200 ; write to y-pos of sprite 1/4
+  STA $0204 ; write to y-pos of sprite 2/4
+ReadDownDone:
+
+  LDA buttons1       ; load player 1 - buttons
+  AND #%00000010  ; only look at bit 1
+  BEQ ReadLeftDone   ; branch to ReadLeftDone if button is NOT pressed (0)
+; Move guy to the left 
+  LDA player_x
+  CMP #$8  ; changed from SBC #$5
+  BEQ ReadLeftDone ; if equal to zero, go to readleftdone
+  DEC player_x
+  STA $0207 ; x-pos of sprite 2/4
+  STA $020F ; x-pos of sprite 4/4
+  clc
+  sbc #$7
+  STA $0203 ; x-pos of sprite 1/4
+  STA $020B ; x-pos of sprite 3/4
+ReadLeftDone:
+
+  LDA buttons1       ; load player 1 - buttons
+  AND #%00000001  ; only look at bit 0
+  BEQ ReadRightDone ; branch to ReadRightDone if button is NOT pressed (0)
+; Move guy to the right  
+  LDA player_x
+  CMP #$F8
+  BEQ ReadRightDone
+  INC player_x
+  STA $0207 ; write to x-pos of sprite 2/4
+  STA $020F ; write to x-pos of sprite 4/4
+  clc
+  sbc #$7
+  STA $0203 ; write to x-pos of sprite 1/4
+  STA $020B ; write to x-pos of sprite 3/4
+ReadRightDone:
+
+
+;  JSR UpdateSpritePosition  ;; setup sprite positions
 
   JMP GameEngineDone
 
@@ -602,10 +749,10 @@ palette:
 ;     y,   tile,attribute, x
 sprites:
 player:
-  .db $f0, $0A, %00000000, $08   ;sprite 1/4: player
-  .db $f0, $0B, %00000000, $10   ;sprite 2/4: player
-  .db $f0, $1A, %00000000, $08   ;sprite 3/4: player
-  .db $f0, $1B, %00000000, $10   ;sprite 4/4: player << collision detection configured on this tile
+  .db $f0, $0A, %00000000, $f0   ;sprite 1/4: player
+  .db $f0, $0B, %00000000, $f0   ;sprite 2/4: player
+  .db $f0, $1A, %00000000, $f0   ;sprite 3/4: player
+  .db $f0, $1B, %00000000, $f0   ;sprite 4/4: player << collision detection configured on this tile
   .db $f0, $0E, %00000001, $CD   ;missile (y 220, x 205)
 tiefighter:
   .db $f0, $4a, %00000000, $32 ; tiefighter 1/4
