@@ -29,7 +29,7 @@ sta x2 ; (0-255)
 
 lda y1
 cmp y2  ; accumulator (y1) less than y2?
-beq l_ysequal
+beq l_ysequal  ; neither, y1 is equal to y2
 bcc l_y1small  ; yes, y1 (accumulator) less than y2
 bcs l_y2small  ; no, y2 is less than y1 (accumulator)
 error0:
@@ -53,7 +53,7 @@ jmp calc_x
 calc_x:
 lda x1
 cmp x2 ; accumulator (x1) less than x2?
-beq l_xsequal
+beq l_xsequal ; neither, x1 is equal to x2
 bcc l_x1small ; yes, x1 (accumulator) less than x2
 bcs l_x2small ; no, x2 is less than x1 (accumulator)
 error1:
@@ -143,6 +143,7 @@ sta xd
 jmp end3
 
 end3:
+clc
 lda yd
 cmp prox  ; accumulator less than prox?
 bcs clear ; no, accumulator is not less than prox
