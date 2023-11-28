@@ -1,40 +1,37 @@
+cld
 define y1 $0      ; player y
 define x1 $1      ; player x
 define y2 $10     ; enemy y
 define x2 $11     ; enemy x
 define yd $20     ; y-delta
 define xd $21     ; x-delta
+define prox 9     ; collision limit
 
-
-ysequal .rs 1
-y1small .rs 1
-y2small .rs 1
-xsequal .rs 1
-x1small .rs 1
-x2small .rs 1
-p .rs 1         ; collision limit
-
-
-lda #$5
-sta p           ; store collision limit
+lda #$0
+sta ysequal
+sta y1small
+sta y2small
+sta xsequal
+sta x1small
+sta x2small
 
 
 ; store
-lda #1
+lda #$90
 sta y1 ; (4-236)
-lda #$e0
+lda #$90
 sta x1 ; (4-251)
-lda #2
+lda #$10
 sta y2 ; (0-240)
-lda #7
+lda #$10
 sta x2 ; (0-255)
 
 
 lda y1
-cmp y2  
+cmp y2  ; accumulator (y1) less than y2?
 beq l_ysequal
-bcc l_y1small
-bcs l_y2small
+bcc l_y1small  ; yes, y1 (accumulator) less than y2
+bcs l_y2small  ; no, y2 is less than y1 (accumulator)
 error0:
 brk
 
@@ -55,10 +52,10 @@ jmp calc_x
 
 calc_x:
 lda x1
-cmp x2
+cmp x2 ; accumulator (x1) less than x2?
 beq l_xsequal
-bcc l_x1small
-bcs l_x2small
+bcc l_x1small ; yes, x1 (accumulator) less than x2
+bcs l_x2small ; no, x2 is less than x1 (accumulator)
 error1:
 brk
 
@@ -147,12 +144,12 @@ jmp end3
 
 end3:
 lda yd
-cmp p
-bcc clear
+cmp prox  ; accumulator less than prox?
+bcs clear ; no, accumulator is not less than prox
 
 lda xd
-cmp p
-bcc clear
+cmp prox  ; accumulator less than prox?
+bcs clear ; no, accumulator is not less than prox
 
 collision:
 brk
