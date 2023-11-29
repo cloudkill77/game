@@ -8,7 +8,7 @@ lda enemy_homing ; is enemy homing?
 bne skippattern ; yes, skip pattern
 ldy pattern1
 cmp #$3c   ; is A less than 60?
-bc  skippattern: no
+bcs skippattern: no
 inc enemy_y
 inc pattern1
 
@@ -18,7 +18,8 @@ inc pattern1
 
 ontarget_reset:
 lda #$0
-sta enemy_homing
+sta enemy_homing  ; reset enemy homing
+sta pattern1      ; reset pattern1 count
 
 ontarget:
 
