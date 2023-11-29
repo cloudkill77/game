@@ -25,7 +25,8 @@ g_done .rs 1         ; $B g has done its thing
 planespawn .rs 1     ; $C have the planes been spawned
 skipintro .rs 1      ; $D
 skipintrocount .rs 1 ; $E
-game_active .rs 1 ; $F is gameplay currently active
+game_active .rs 1    ; $F is gameplay currently active
+laserframe .rs 1     ; frame count for synchronising laser firing
 
 ; GAMESTATE READY2GO
 
@@ -401,9 +402,12 @@ collision:  ; collision occurred
 firing:
 ;fire logic - run this only once
   LDA laser1_fired  ; load value if it has been fired
-  BNE fireddone     ; branch if 1 (if it has been fired, go to fireddone), otherwise, continue
+  BNE laser1done     ; branch if 1 (if it has been fired, go to fireddone), otherwise, continue
+
   LDA #$1	        ; load #$1 into accumulator
-  STA laser1_fired	; store 1 in variable "fired" 
+  STA laser1_fired	; store 1 in variable "fired"
+  lda framecounter2 ; take snapshot, store it in laserframe for comparison
+  sta laserframe  
 
   lda #130
   sta $4006
@@ -412,18 +416,36 @@ firing:
   lda #%10011111
   sta $4004
 
-  LDA enemy_x ; load x-pos of player
-  STA laser1_x ; set starting x-pos of missile
-  LDA enemy_y ; load y-pos of player
-  STA laser1_y ; set starting y-pos of missile
-  RTS
+  LDA enemy_x ; load x-pos of enemy
+  STA laser1_x ; set starting x-pos of laser
+  LDA enemy_y ; load y-pos of enemy
+  STA laser1_y ; set starting y-pos of laser
+laser1done:  
 
-fireddone:  
+  LDA laser2_fired  ; load value if it has been fired
+  BNE laser2done     ; branch if 1 (if it has been fired, go to fireddone), otherwise, continue
   
-
-
-
+  sec
+  lda framecounter2
+  sbc laserframe
+  cmp #$1
+  bcc laser2done    ; yes, its less than 9, branch to laser2done
+  LDA #$1	        ; load #$1 into accumulator
+  STA laser2_fired	; store 1 in variable "fired"
   
+  lda #130
+  sta $4006
+  lda #200
+  sta $4007
+  lda #%10011111
+  sta $4004
+ 
+  LDA enemy_x ; load x-pos of enemy
+  STA laser2_x ; set starting x-pos of laser
+  LDA enemy_y ; load y-pos of enemy
+  STA laser2_y ; set starting y-pos of laser
+laser2done:  
+
   RTS
   
 
@@ -838,7 +860,6 @@ UpdateSpritePosition:
 ; run laser logic routine
   LDA laser1_fired
   BEQ laser1_end ; branch to laser1_end if it hasnt been fired // this works without CMP
-; if it has exceeded x position of xxx, reset the laser
   LDA laser1_x ; load x coordinates of laser sprite
   CMP #$4 ; is accumulator less than 4?
   BCC laser1reset ; yes, branch to laser1reset label to reset the status of the laser
@@ -850,20 +871,47 @@ UpdateSpritePosition:
   STA laser1_x
   JMP laser1_end
 
-;move the missile back to the initial position. reset the fired variable to 0 
-laser1reset:
-; jsr init_apu ; reinitialize audio to stop the laser sound effect
+laser1reset:    ;move the missile back to the initial position. reset the fired variable to 0 
   LDA #$F0 ; 
   STA laser1_y ; set the y coordinates of the laser to below the screen
   LDA #$0 ; 0
   STA laser1_fired ; reset status of laser1 as unfired
   
 laser1_end:  
- 
+
+; run laser logic routine
+  LDA laser2_fired
+  BEQ laser2_end ; branch to laser1_end if it hasnt been fired // this works without CMP
+  LDA laser2_x ; load x coordinates of laser sprite
+  CMP #$4 ; is accumulator less than 4?
+  BCC laser2reset ; yes, branch to laser1reset label to reset the status of the laser
+
+;if it has been fired, subtract 2 from x-pos of laser1
+  LDA laser2_x ; load current x-pos of laser
+  SEC
+  SBC #$2 ; if it has been fired, move the laser to the left
+  STA laser2_x
+  JMP laser2_end
+
+laser2reset:    ;move the missile back to the initial position. reset the fired variable to 0 
+  LDA #$F0 ; 
+  STA laser2_y ; set the y coordinates of the laser to below the screen
+  LDA #$0 ; 0
+  STA laser2_fired ; reset status of laser1 as unfired
+  
+laser2_end:
+
+
+
   lda laser1_y
   STA $0224
   lda laser1_x
   STA $0227
+  
+  lda laser2_y
+  STA $0228
+  lda laser2_x
+  STA $022b
   
   dec enemy_x
 
@@ -907,23 +955,23 @@ palette:
 
 ;     y,   tile,attribute, x
 sprites:
-player:
+;player:
   .db $f0, $0A, %00000000, $f0   ;sprite 1/4: player
   .db $f0, $0B, %00000000, $f0   ;sprite 2/4: player
   .db $f0, $1A, %00000000, $f0   ;sprite 3/4: player
   .db $f0, $1B, %00000000, $f0   ;sprite 4/4: player << collision detection configured on this tile
   .db $f0, $0E, %00000001, $CD   ;missile (y 220, x 205)
-tiefighter:
+;tiefighter:
   .db $f0, $4a, %00000000, $fe ; tiefighter 1/4
   .db $f0, $4b, %00000000, $ff ; tiefighter 2/4
   .db $f0, $5a, %00000000, $fe ; tiefighter 3/4
   .db $f0, $5b, %00000000, $ff ; tiefighter 4/4 << collision detection configured on this tile
-game:
+;laser:
   .db $f0, $00, %00000011, $ff ; laser1
-  .db $f0, tA, %00000000, $70 ; A
+  .db $f0, $00, %00000011, $ff ; laser2
   .db $f0, tM, %00000000, $78 ; M
   .db $f0, tE, %00000000, $80 ; E
-sun:
+;sun:
   .db $f0, $40, %00000010, $08
   .db $f0, $41, %00000010, $10
   .db $f0, $42, %00000010, $18
@@ -933,24 +981,24 @@ sun:
   .db $f0, $60, %00000010, $08
   .db $f0, $61, %00000010, $10
   .db $f0, $62, %00000010, $18
-clouds:
+;clouds:
   .db $f0, $6b, %00000010, $58 ; cloud1 1/3
   .db $f0, $6c, %00000010, $60 ; cloud1 2/3
   .db $f0, $6d, %00000010, $68 ; cloud1 3/3
   .db $f0, $7b, %00000010, $60 ; cloud2 1/3
   .db $f0, $6c, %00000010, $68 ; cloud2 2/3
   .db $f0, $6d, %00000010, $70 ; cloud2 3/3		
-factory:
+;factory:
   .db $f0, $88, %00000010, $65
   .db $f0, $89, %00000010, $6D
   .db $f0, $98, %00000010, $65
   .db $f0, $99, %00000010, $6D
-brokenfactory;
+;brokenfactory;
   .db $f0, $aa, %00000010, $65 ; a
   .db $f0, $ab, %00000010, $6D ; c
   .db $f0, $ba, %00000010, $65 ; b
   .db $f0, $bb, %00000010, $6D ; d
-INblackplane:
+;INblackplane:
   .db $f0, $2c, %00000000, $0 ; plane1 1/4
   .db $f0, $2d, %00000000, $8 ; plane1 2/4
   .db $f0, $3c, %00000000, $0 ; plane1 3/4
@@ -963,31 +1011,31 @@ INblackplane:
 ;  |+------- Flip sprite horizontally
 ;  +-------- Flip sprite vertically
 
-plane2:
+;plane2:
   .db $f0, $2a, %00000000, $10 ; plane2 1/4 with lights
   .db $f0, $2b, %00000000, $18 ; plane2 2/4 with lights 
   .db $f0, $3a, %00000000, $10 ; plane2 3/4 with lights
   .db $f0, $3b, %00000000, $18 ; plane2 4/4 with lights
-INbutton_ab:
+;INbutton_ab:
   .db $f0, $48, %00000000, $90 ; A/B Button
-INarrowbig:
+;INarrowbig:
   .db $f0, $49, %00000000, $98 ; big arrow
-INbuttonlabel:  
+;INbuttonlabel:  
   .db $f0, $58, %00000000, $8c ; A
   .db $f0, $59, %00000000, $94 ; B 
-tombstone:
+;tombstone:
   .db $f0, $02, %00000000, $68 ; tombstone 1/4
   .db $f0, $03, %00000000, $70 ; tombstone 2/4
   .db $f0, $12, %00000000, $68 ; tombstone 3/4
   .db $f0, $13, %00000000, $70 ; tombstone 4/4
-moon:
+;moon:
   .db $f0, $a8, %00000000, $20 ; moon 1/4
   .db $f0, $a9, %00000000, $28 ; moon 2/4
   .db $f0, $b8, %00000000, $20 ; moon 3/4
   .db $f0, $b9, %00000000, $28 ; moon 4/4
-buttonstart: ; 
+;buttonstart: ; 
   .db $f0, $d6, %00000000, $80 ; startbutton
-otherletters:
+;otherletters:
   .db $f0, tR, %00000000, $58 ; R
   .db $f0, tD, %00000000, $68 ; D
   .db $f0, tY, %00000000, $70 ; Y
