@@ -836,14 +836,14 @@ UpdateSpritePosition:
   STA $021f ; x-pos of sprite 3/4
 
 ; run laser logic routine
+  LDA laser1_fired
+  BEQ laser1_end ; branch to laser1_end if it hasnt been fired // this works without CMP
 ; if it has exceeded x position of xxx, reset the laser
   LDA laser1_x ; load x coordinates of laser sprite
   CMP #$4 ; is accumulator less than 4?
   BCC laser1reset ; yes, branch to laser1reset label to reset the status of the laser
 
 ;if it has been fired, subtract 2 from x-pos of laser1
-  LDA laser1_fired
-  BEQ laser1_end ; branch to laser1_end if it hasnt been fired // this works without CMP
   LDA laser1_x ; load current x-pos of laser
   SEC
   SBC #$2 ; if it has been fired, move the laser to the left
@@ -859,16 +859,11 @@ laser1reset:
   STA laser1_fired ; reset status of laser1 as unfired
   
 laser1_end:  
-   
-  
-  
-  
-  
+ 
   lda laser1_y
   STA $0224
   lda laser1_x
   STA $0227
-
   
   dec enemy_x
 
