@@ -399,46 +399,30 @@ collision:  ; collision occurred
   RTS
 
 firing:
+;fire logic - run this only once
+  LDA laser1_fired  ; load value if it has been fired
+  BNE fireddone     ; branch if 1 (if it has been fired, go to fireddone), otherwise, continue
+  LDA #$1	        ; load #$1 into accumulator
+  STA laser1_fired	; store 1 in variable "fired" 
+
   lda #130
   sta $4006
   lda #200
   sta $4007
   lda #%10011111
   sta $4004
-  
-  
-; if it has exceeded x position of xxx, reset the laser
-  LDA laser1_x ; load x coordinates of laser sprite
-  CMP #$8 ; is accumulator less than 8?
-  BCC laser1reset ; yes, branch to laser1reset label to reset the status of the laser
 
-  
- ;if it has been fired, subtract 2 from x-pos of laser1
-  LDA laser1_fired
-  BEQ laser1_end ; branch if equal to zero, branch to nmi_end if it hasnt been fired // this works without CMP
-  LDA laser1_x ; load current x-pos of laser
-  SEC
-  SBC #$2 ; if it has been fired, move the laser to the left
- ; STA $0213 .. update sprite OAM / write to OAM 
-  STA laser1_x
-  JMP laser1_end
+  LDA enemy_x ; load x-pos of player
+  STA laser1_x ; set starting x-pos of missile
+  LDA enemy_y ; load y-pos of player
+  STA laser1_y ; set starting y-pos of missile
+  RTS
 
-;move the missile back to the initial position. reset the fired variable to 0 
-laser1reset:
-; jsr init_apu ; reinitialize audio to stop the laser sound effect
-  LDA #$F0 ; 
-  STA laser1_y ; set the y coordinates of the laser to below the screen
-  LDA #$0 ; 0
-  STA laser1_fired ; reset status of laser1 as unfired
+fireddone:  
   
-laser1_end:  
-  
-  
-  
-  
-  
-  
-  
+
+
+
   
   RTS
   
@@ -850,7 +834,41 @@ UpdateSpritePosition:
   SBC #$7
   STA $0217 ; x-pos of sprite 1/4
   STA $021f ; x-pos of sprite 3/4
-  ;RTS
+
+; run laser logic routine
+; if it has exceeded x position of xxx, reset the laser
+  LDA laser1_x ; load x coordinates of laser sprite
+  CMP #$4 ; is accumulator less than 4?
+  BCC laser1reset ; yes, branch to laser1reset label to reset the status of the laser
+
+;if it has been fired, subtract 2 from x-pos of laser1
+  LDA laser1_fired
+  BEQ laser1_end ; branch to laser1_end if it hasnt been fired // this works without CMP
+  LDA laser1_x ; load current x-pos of laser
+  SEC
+  SBC #$2 ; if it has been fired, move the laser to the left
+  STA laser1_x
+  JMP laser1_end
+
+;move the missile back to the initial position. reset the fired variable to 0 
+laser1reset:
+; jsr init_apu ; reinitialize audio to stop the laser sound effect
+  LDA #$F0 ; 
+  STA laser1_y ; set the y coordinates of the laser to below the screen
+  LDA #$0 ; 0
+  STA laser1_fired ; reset status of laser1 as unfired
+  
+laser1_end:  
+   
+  
+  
+  
+  
+  lda laser1_y
+  STA $0224
+  lda laser1_x
+  STA $0227
+
   
   dec enemy_x
 
@@ -906,7 +924,7 @@ tiefighter:
   .db $f0, $5a, %00000000, $fe ; tiefighter 3/4
   .db $f0, $5b, %00000000, $ff ; tiefighter 4/4 << collision detection configured on this tile
 game:
-  .db $f0, tG, %00000000, $68 ; G
+  .db $f0, $00, %00000011, $ff ; laser1
   .db $f0, tA, %00000000, $70 ; A
   .db $f0, tM, %00000000, $78 ; M
   .db $f0, tE, %00000000, $80 ; E
