@@ -50,7 +50,41 @@ enemy_y .rs 1      ; $1B enemy x-pos sprite tile 4/4
 enemy_x .rs 1      ; $1C enemy y-pos sprite tile 4/4
 enemy_h .rs 1      ; $1D enemy health
 enemy_alive .rs 1  ; $1E is enemy alive or dead. 0 hes dead, 1 hes alive
-respawntimer .rs 1 ; $1F timer for enemy respawn
+laser1_y .rs 1     
+laser1_x .rs 1
+laser1_h .rs 1
+laser1_fired .rs 1
+laser2_y .rs 1
+laser2_x .rs 1
+laser2_h .rs 1
+laser2_fired .rs 1
+laser3_y .rs 1     
+laser3_x .rs 1
+laser3_h .rs 1
+laser3_fired .rs 1
+laser4_y .rs 1
+laser4_x .rs 1
+laser4_h .rs 1
+laser4_fired .rs 1
+laser1b_y .rs 1     
+laser1b_x .rs 1
+laser1b_h .rs 1
+laser1b_fired .rs 1
+laser2b_y .rs 1
+laser2b_x .rs 1
+laser2b_h .rs 1
+laser2b_fired .rs 1
+laser3b_y .rs 1     
+laser3b_x .rs 1
+laser3b_h .rs 1
+laser3b_fired .rs 1
+laser4b_y .rs 1
+laser4b_x .rs 1
+laser4b_h .rs 1
+laser4b_fired .rs 1
+
+
+respawntimer .rs 1 ; timer for enemy respawn
 
 ;other stuff
 boost .rs 1 ; variable stores if boost has been applied. it is reset after having added boost to the sprites movement.
@@ -273,6 +307,16 @@ LoadINAttributeLoop:
   sta enemy_h
   lda #$1 ; enemy spawn state at beginning
   sta enemy_alive
+  lda #$4
+  sta laser1_h   ; laser has 4 health
+  sta laser2_h   ; laser has 4 health
+  sta laser3_h   ; laser has 4 health
+  sta laser4_h   ; laser has 4 health
+  lda #$2
+  sta laser1b_h  ; laser has 2 health
+  sta laser2b_h  ; laser has 2 health
+  sta laser3b_h  ; laser has 2 health
+  sta laser4b_h  ; laser has 2 health
   lda #$5
   sta prox           ; store collision limit
 
@@ -361,6 +405,41 @@ firing:
   sta $4007
   lda #%10011111
   sta $4004
+  
+  
+; if it has exceeded x position of xxx, reset the laser
+  LDA laser1_x ; load x coordinates of laser sprite
+  CMP #$8 ; is accumulator less than 8?
+  BCC laser1reset ; yes, branch to laser1reset label to reset the status of the laser
+
+  
+ ;if it has been fired, subtract 2 from x-pos of laser1
+  LDA laser1_fired
+  BEQ laser1_end ; branch if equal to zero, branch to nmi_end if it hasnt been fired // this works without CMP
+  LDA laser1_x ; load current x-pos of laser
+  SEC
+  SBC #$2 ; if it has been fired, move the laser to the left
+ ; STA $0213 .. update sprite OAM / write to OAM 
+  STA laser1_x
+  JMP laser1_end
+
+;move the missile back to the initial position. reset the fired variable to 0 
+laser1reset:
+; jsr init_apu ; reinitialize audio to stop the laser sound effect
+  LDA #$F0 ; 
+  STA laser1_y ; set the y coordinates of the laser to below the screen
+  LDA #$0 ; 0
+  STA laser1_fired ; reset status of laser1 as unfired
+  
+laser1_end:  
+  
+  
+  
+  
+  
+  
+  
+  
   RTS
   
 
