@@ -1,4 +1,5 @@
 cld
+new:
 lda #$00   ; low byte
 sta $0
 lda #$02   ; high byte
@@ -15,5 +16,7 @@ jmp start
 
 next:
 inc $1
-brk
+lda $1
+cmp #$6
+beq new
 jmp start
