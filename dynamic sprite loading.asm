@@ -5,7 +5,7 @@ sta $1
 
 start:
 lda #$5
-sta ($0,x)
+sta ($0),y   
 inc $0
 jmp start
 
