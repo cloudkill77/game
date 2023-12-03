@@ -1,22 +1,17 @@
-cld
-new:
-lda #$00   ; low byte
-sta $0
-lda #$02   ; high byte
-sta $1
+  LDA #$00
+  STA oamLo       
+  LDA #$02
+  STA oamHi       ; pointer now says $0200
 
-start:
-lda #$5
-sta ($0),y
-inc $0
-lda $0
-cmp #$00
-beq next
-jmp start
 
-next:
-inc $1
-lda $1
-cmp #$6
-beq new
-jmp start
+
+  LDY #$00
+LoadSprites1Loop:
+  LDA player, y        ; load data from address
+  STA [oamLo], y          ; store into RAM address 
+  INY                   ;
+  CPY #$10              ; 
+  BNE LoadSprites1Loop   ; Branch to LoadSpritesLoop if compare was Not Equal to zero
+                        ; if compare was equal to zero, keep going down
+  lda #$10
+  sta oamLo            ; advance address for next sprite
