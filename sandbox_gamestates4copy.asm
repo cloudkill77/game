@@ -249,6 +249,15 @@ initloop:
   lda #$40
   sta $4017
 
+;APUFLAGS ($4015)
+; 0F=1111
+;76543210
+;   |||||
+;   ||||+- Square 1 (0: disable; 1: enable)
+;   |||+-- Square 2
+;   ||+--- Triangle
+;   |+---- Noise
+;   +----- DMC
 
   
 ppu: 
