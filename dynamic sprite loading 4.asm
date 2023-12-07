@@ -46,8 +46,7 @@ sta frame
 ldx key
 lda anim_player,x
 sta (e1oamTL),y
-inx
-stx key
+inc key
 jmp loop
 
 oamstore:
