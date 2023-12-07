@@ -8,6 +8,8 @@ define e1oamAL $14
 define e1oamAH $15
 define e1oamXL $16
 define e1oamXH $17
+define key $2
+define frame $3
 
 lda #$00
 sta oamL
@@ -19,27 +21,45 @@ sta e1oamAH
 sta e1oamXH
 
 jsr oamstore
-lda #$30           ; y-pos
+lda #$30 ; y-pos
 sta (e1oamYL), y
-lda #$fc           ; tile #
+lda #$fc ; tile #
 sta (e1oamTL), y
-lda #$0            ; attribute
+lda #$0  ; attribute
 sta (e1oamAL), y
-lda #$50           ; x-pos
+lda #$50 ; x-pos
 sta (e1oamXL), y
-brk
 
+loop:
+
+lda frame
+cmp #$4
+beq nmi
+inc frame
+
+jmp loop
+
+nmi:
+
+lda #$0
+sta frame
+ldx key
+lda anim_player,x
+sta (e1oamTL),y
+inx
+stx key
+jmp loop
 
 oamstore:
 clc
 lda oamL         ; eg 0
-sta e1oamYL      ; store
+sta e1oamYL ; store
 adc #$1          ; eg 0+1
-sta e1oamTL      ; store
+sta e1oamTL ; store
 adc #$1          ; eg 0+1+1
-sta e1oamAL      ; store
+sta e1oamAL ; store
 adc #$1          ; eg 0+1+1+1
-sta e1oamXL      ; store
+sta e1oamXL ; store
 rts
 
 anim_player:
