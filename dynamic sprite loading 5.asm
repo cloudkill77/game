@@ -101,13 +101,15 @@ rts
 
 
 sprites:
-dcb $ff,$e0,$0,$60,$1,$3f ; sprite1: y,t,a,x,e,h
+dcb $ff,$e0,$0,$60,$1,$3f  ; sprite1: y,t,a,x,e,h
 dcb $ff, $e1,$0,$60,$2,$3f ; sprite2
-dcb $ff,$a0,$0,$60,$1,$0 ; laser1
-dcb $ff,$a1,$0,$60,$1,$0 ; laser2
+dcb $ff,$a0,$0,$60,$1,$0   ; laser1
+dcb $ff,$a1,$0,$60,$1,$0   ; laser2
 
 ; damage is measured per tile
-; allows for partial damage
+; allows for partial damage display
+; death occurs if any one tile goes below 0
 ; test if it makes sense
+
 
 
