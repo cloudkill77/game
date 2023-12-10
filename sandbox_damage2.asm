@@ -19,6 +19,7 @@ framecounter3 .rs 1  ; $7 slowly counts up from $0
 
 ; GAMESTATE PLAYING
 p1 .rs 1        ; player 1 low byte oam address of 1st tile eg #$10: $0210
+p1s .rs 1       ; size of player 1 object, number of tiles
 p1l .rs 1		; player 1 lives
 p1y .rs 1       ; player 1 y-pos (center of cel)
 p1x .rs 1       ; x-pos (center of cel)
@@ -40,6 +41,7 @@ p1.3h .rs 1     ; tile 3 health
 ; 7 : dead
 
 e1 .rs 1        ; enemy 1 low byte oam address of 1st tile
+e1s .rs 1       ; size of enemy 1 object, number of tiles
 e1y .rs 1       
 e1x .rs 1
 e1.0t .rs 1
@@ -58,8 +60,52 @@ e1e .rs 1       ; extended attributes
 ; 6 : is currently homing
 ; 7 : is currently firing
 
+
+e2 .rs 1        ; enemy 2 low byte oam address of 1st tile
+e2s .rs 1       ; size of enemy 2 object, number of tiles
+e2y .rs 1       
+e2x .rs 1
+e2.0t .rs 1
+e2.1t .rs 1
+e2.2t .rs 1
+e2.3t .rs 1
+e2.0a .rs 1
+e2.1a .rs 1
+e2.2a .rs 1
+e2.3a .rs 1
+e2h .rs 1       ; health 0-255
+e2e .rs 1       ; extended attributes
+; 76543210
+; 4,3,2,1,0 ; 
+; 5 : 
+; 6 : is currently homing
+; 7 : is currently firing
+
+e3 .rs 1        ; enemy 3 low byte oam address of 1st tile
+e3s .rs 1       ; size of enemy 3 object, number of tiles
+e3y .rs 1       
+e3x .rs 1
+e3.0t .rs 1
+e3.1t .rs 1
+e3.2t .rs 1
+e3.3t .rs 1
+e3.0a .rs 1
+e3.1a .rs 1
+e3.2a .rs 1
+e3.3a .rs 1
+e3h .rs 1       ; health 0-255
+e3e .rs 1       ; extended attributes
+; 76543210
+; 4,3,2,1,0 ; 
+; 5 : 
+; 6 : is currently homing
+; 7 : is currently firing
+
+
+
 m1 .rs 1
-m1y .rs 1       ; missile 1
+m1s .rs 1       ; size of object, number of tiles
+m1y .rs 1       ; missile 1 y-pos
 m1x .rs 1
 m1t .rs 1
 m1a .rs 1
@@ -71,7 +117,8 @@ m1e .rs 1       ; extended attributes
 ; 7 : has been fired
 
 l1 .rs 1
-l1y .rs 1       ; laser 1
+l1s .rs 1       ; size of object, number of tiles
+l1y .rs 1       ; laser 1 y-pos
 l1x .rs 1
 l1t .rs 1
 l1a .rs 1
@@ -83,7 +130,8 @@ l1e .rs 1       ; extended attributes
 ; 7 : has been fired
 
 l2 .rs 1
-l2y .rs 1       ; laser 1
+l2s .rs 1       ; size of object, number of tiles
+l2y .rs 1       ; laser 1 y-pos
 l2x .rs 1
 l2t .rs 1
 l2a .rs 1
@@ -129,13 +177,13 @@ RESET:
   STX $2001    ; disable rendering
   STX $4010    ; disable DMC IRQs
 
-.vblankwait1:       ; First wait for vblank to make sure PPU is ready
+vblankwait1:       ; First wait for vblank to make sure PPU is ready
   BIT $2002        ; Check value of $2002 and set CPU flag for Zero, Negative, Overflow 
 				   ; accordingly without affecting Accumulator
-  BPL .vblankwait1  ; If Negative flag is clear, branch to vblankwait1
+  BPL vblankwait1  ; If Negative flag is clear, branch to vblankwait1
   
   LDX #$00
-.clrmem:
+clrmem:
   LDA #$00
   STA $0000, x
   STA $0100, x
@@ -147,12 +195,12 @@ RESET:
   LDA #$FE
   STA $0200, x
   INX
-  BNE .clrmem
+  BNE clrmem
    
-.vblankwait2:      ; Second wait for vblank, PPU is ready after this
+vblankwait2:      ; Second wait for vblank, PPU is ready after this
   BIT $2002       ; Check value of $2002 and set CPU flag for Zero, Negative, Overflow 
 				  ; accordingly without affecting Accumulator
-  BPL .vblankwait2 ; If Negative flag is clear, branch to vblankwait2
+  BPL vblankwait2 ; If Negative flag is clear, branch to vblankwait2
   
   
 
@@ -182,33 +230,33 @@ LoadINBackground:
   STA $2006             ; write the low byte of $2000 address
  
   LDX #$00              ; start out at 0
-LoadINBackgroundLoop1:
+.loop1:
   LDA INbackground1, x     ; load data from address (background + the value in x)
   STA $2007             ; write to PPU
   INX                   ; X = X + 1
   CPX #$00           ; Compare X to hex $80, decimal 128 - copying 128 bytes
-  BNE LoadINBackgroundLoop1  ; Branch to LoadBackgroundLoop if compare was Not Equal to zero
+  BNE .loop1  ; Branch to LoadBackgroundLoop if compare was Not Equal to zero
   LDX #$00 
-LoadINBackgroundLoop2:
+.loop2:
   LDA INbackground2, x     ; load data from address (background + the value in x)
   STA $2007             ; write to PPU
   INX                   ; X = X + 1
   CPX #$00           ; Compare X to hex $80, decimal 128 - copying 128 bytes
-  BNE LoadINBackgroundLoop2  ; Branch to LoadBackgroundLoop if compare was Not Equal to zero
+  BNE .loop2  ; Branch to LoadBackgroundLoop if compare was Not Equal to zero
   LDX #$00 
-LoadINBackgroundLoop3:
+.loop3:
   LDA INbackground3, x     ; load data from address (background + the value in x)
   STA $2007             ; write to PPU
   INX                   ; X = X + 1
   CPX #$00           ; Compare X to hex $80, decimal 128 - copying 128 bytes
-  BNE LoadINBackgroundLoop3  ; Branch to LoadBackgroundLoop if compare was Not Equal to zero
+  BNE .loop3  ; Branch to LoadBackgroundLoop if compare was Not Equal to zero
   LDX #$00 
-LoadINBackgroundLoop4:
+.loop4:
   LDA INbackground4, x     ; load data from address (background + the value in x)
   STA $2007             ; write to PPU
   INX                   ; X = X + 1
   CPX #$a0           ; Compare X to hex $80, decimal 128 - copying 128 bytes
-  BNE LoadINBackgroundLoop4  ; Branch to LoadBackgroundLoop if compare was Not Equal to zero
+  BNE .loop4  ; Branch to LoadBackgroundLoop if compare was Not Equal to zero
 
 LoadINAttribute:
   LDA $2002             ; read PPU status to reset the high/low latch
@@ -217,12 +265,12 @@ LoadINAttribute:
   LDA #$C0
   STA $2006             ; write the low byte of $23C0 address
   LDX #$00              ; start out at 0
-LoadINAttributeLoop:
+.loop:
   LDA INattribute, x      ; load data from address (attribute + the value in x)
   STA $2007             ; write to PPU
   INX                   ; X = X + 1
   CPX #$08              ; Compare X to hex $08, decimal 8 - copying 8 bytes
-  BNE LoadINAttributeLoop
+  BNE .loop
 
 
   lda #$02
@@ -230,6 +278,13 @@ LoadINAttributeLoop:
 
 ;; STARTING VARIABLES
 ;good sprites
+
+  lda #$0           ; reserve oam 0-16 for player 1
+  sta p1
+  lda #$10          ; increment next available oam address by #$10
+  sta oamL
+  lda #$10          ; p1 uses #$10 of oam address space
+  sta p1s
   lda #$70
   sta p1y
   lda #$10
@@ -254,9 +309,23 @@ LoadINAttributeLoop:
   sta p1.3h
   lda #$5 ; 5 lives
   sta p1l
-  lda #$14  ; missile has 20 health
+  
+  lda #$4
+  sta m1s
+  lda #$dc
+  sta m1y
+  lda #$cd
+  sta m1x
+  lda #$e
+  sta m1t
+  lda #%00000001
+  sta m1a
+  lda #$14  ; missile has 20 health (ie does 20 damage)
   sta m1h
+  
 ;bad sprites
+  lda #$10
+  sta e1s   ; e1 uses #$10 of oam address space
   lda #$50
   sta e1y
   lda #$c8
@@ -274,8 +343,55 @@ LoadINAttributeLoop:
   sta e1.1a
   sta e1.2a
   sta e1.3a
-  lda #$60 ; enemy starting health
+  lda #$60  ; enemy starting health
   sta e1h
+  
+  lda #$10
+  sta e2s   ; e2 uses #$10 of oam address space
+  lda #$60
+  sta e2y
+  lda #$cc
+  sta e2x
+  lda #$4a
+  sta e2.0t
+  lda #$4b
+  sta e2.1t
+  lda #$5a
+  sta e2.2t
+  lda #$5b
+  sta e2.3t
+  lda #%00000000
+  sta e2.0a
+  sta e2.1a
+  sta e2.2a
+  sta e2.3a
+  lda #$60 ; enemy starting health
+  sta e2h 
+
+  lda #$10
+  sta e3s   ; e3 uses #$10 of oam address space
+  lda #$40
+  sta e3y
+  lda #$cc
+  sta e3x
+  lda #$4a
+  sta e3.0t
+  lda #$4b
+  sta e3.1t
+  lda #$5a
+  sta e3.2t
+  lda #$5b
+  sta e3.3t
+  lda #%00000000
+  sta e3.0a
+  sta e3.1a
+  sta e3.2a
+  sta e3.3a
+  lda #$60 ; enemy starting health
+  sta e3h 
+
+  lda #$4
+  sta l1s   ; l1 uses #$4 of oam address space 
   lda #$4
   sta l1h   ; laser has 4 health
   sta l2h   ; laser has 4 health
@@ -306,29 +422,7 @@ init_audio:
   lda #$40
   sta $4017
 
-loadsprites:
-;  lda oamL   ; load available oam address of A register 
-;  sta p1 ; store for player 1
-;  ldx #$0 ; start at 0 (player 1 sprite 1)
-;.loop1:
-;  lda sprites,x ; load y-pos (for example) into a
-;  sta [oamL], y
-;  inc oamL
-;  inx
-;  cpx #$10 ; at 16 stop looping
-;  bne .loop1
 
-
-;  lda oamL   ; load available oam address of A register 
-;  sta e1 ; store for enemy 1
-;  ldx #$14 ; start at 20 (enemy 1 sprite 1)
-;.loop2:
-;  lda sprites,x ; load y-pos (for example) into a
-;  sta [oamL], y
-;  inc oamL
-;  inx
-;  cpx #$24 ; at 36 stop looping
-;  bne .loop2 
 
   
 
@@ -361,7 +455,7 @@ Foreverloop:
   JMP Foreverloop     ;jump back to Forever, infinite loop
 
 
-
+  
 ; read controller subroutine. called from within NMI
 ReadController1:
   LDA #$01
@@ -405,14 +499,6 @@ NMI: ; called 60 times per second
 
   
   
-;  LDX #$00
-;LoadSpritesLoop:
-;  LDA sprites, x        ; load data from address (sprites +  x)
-;  STA $0200, x          ; store into RAM address ($0200 + x)
-;  INX                   ; X = X + 1
-;  CPX #$2c              ; Compare X to hex $80, decimal 128. loads the first 128 bytes of sprites (32 sprites)
-;  BNE LoadSpritesLoop   ; Branch to LoadSpritesLoop if compare was Not Equal to zero
-                        ; if compare was equal to zero, keep going down
 
 ;render all frames
 
@@ -422,14 +508,6 @@ NMI: ; called 60 times per second
 
 
 ;render even frames
-
-
-
-
-
-
-
-
 
 
 
@@ -517,6 +595,8 @@ ReadStartDone:
  
 EnginePlaying:
 
+  lda p1
+  sta oamL
 
   LDA buttons1       ; load player 1 - buttons
   AND #%00001000  ; only look at bit 3
@@ -526,12 +606,19 @@ EnginePlaying:
   CMP #$b ; 
   BEQ ReadUpDone ; if equal to zero, go to readupdone
   DEC p1y
-  STA $0208 ; write to y-pos of sprite 3/4
-  STA $020C ; write to y-pos of sprite 4/4
-  CLC ; clear carry
-  SBC #$7 ; account for shift of tile location in *.chr . add #$8 to x
-  STA $0200 ; write to y-pos of sprite 1/4
-  STA $0204 ; write to y-pos of sprite 2/4
+  LDA p1y
+
+  ldy #$8
+  STA [oamL], y    ; write to y-pos of sprite 3/4
+  ldy #$c
+  STA [oamL], y    ; write to y-pos of sprite 4/4
+  SEC              ; set carry
+  SBC #$8          ; account for shift of tile location in *.chr . add #$8 to x
+  ldy #$0
+  STA [oamL], y    ; write to y-pos of sprite 1/4
+  ldy #$4
+  STA [oamL], y    ; write to y-pos of sprite 2/4
+  
 ReadUpDone:
 
   LDA buttons1       ; load player 1 - buttons
@@ -542,12 +629,19 @@ ReadUpDone:
   CMP #$E3 ; ; if it has exceeded y position of xxx, ignore further movement in y axis downwards
   BEQ ReadDownDone ; if equal to zero, go to readdowndone
   INC p1y
-  STA $0208 ; write to y-pos of sprite 3/4
-  STA $020C ; write to y-pos of sprite 4/4
-  CLC
-  SBC #$7
-  STA $0200 ; write to y-pos of sprite 1/4
-  STA $0204 ; write to y-pos of sprite 2/4
+  LDA p1y
+
+  ldy #$8
+  STA [oamL], y    ; write to y-pos of sprite 3/4
+  ldy #$c
+  STA [oamL], y    ; write to y-pos of sprite 4/4
+  SEC              ; set carry
+  SBC #$8          ; account for shift of tile location in *.chr . add #$8 to x
+  ldy #$0
+  STA [oamL], y    ; write to y-pos of sprite 1/4
+  ldy #$4
+  STA [oamL], y    ; write to y-pos of sprite 2/4
+  
 ReadDownDone:
 
   LDA buttons1       ; load player 1 - buttons
@@ -558,12 +652,19 @@ ReadDownDone:
   CMP #$8  ; changed from SBC #$5
   BEQ ReadLeftDone ; if equal to zero, go to readleftdone
   DEC p1x
-  STA $0207 ; x-pos of sprite 2/4
-  STA $020F ; x-pos of sprite 4/4
-  CLC
-  SBC #$7
-  STA $0203 ; x-pos of sprite 1/4
-  STA $020B ; x-pos of sprite 3/4
+  LDA p1x
+
+  ldy #$7
+  STA [oamL], y    ; x-pos of sprite 2/4
+  ldy #$f
+  STA [oamL], y    ; x-pos of sprite 4/4
+  SEC
+  sbc #$8
+  ldy #$3
+  STA [oamL], y    ; x-pos of sprite 1/4
+  ldy #$b
+  STA [oamL], y    ; x-pos of sprite 3/4 
+  
 ReadLeftDone:
 
   LDA buttons1       ; load player 1 - buttons
@@ -574,19 +675,198 @@ ReadLeftDone:
   CMP #$F8
   BEQ ReadRightDone
   INC p1x
-  STA $0207 ; write to x-pos of sprite 2/4
-  STA $020F ; write to x-pos of sprite 4/4
-  CLC
-  SBC #$7
-  STA $0203 ; write to x-pos of sprite 1/4
-  STA $020B ; write to x-pos of sprite 3/4
+  LDA p1x
+
+  ldy #$7
+  STA [oamL], y    ; x-pos of sprite 2/4
+  ldy #$f
+  STA [oamL], y    ; x-pos of sprite 4/4
+  SEC
+  sbc #$8
+  ldy #$3
+  STA [oamL], y    ; x-pos of sprite 1/4
+  ldy #$b
+  STA [oamL], y    ; x-pos of sprite 3/4  
+  
 ReadRightDone:
 
-
+;  jmp frameend       ; to skip drawing sprites
 
   lda framecounter3
   cmp #$1
   beq odd
+  jmp even
+  
+odd:
+  dec framecounter3
+
+  lda #$10
+  sta oamL
+  
+  lda oamL    ; load available oam address
+  sta e1      ; store it for this object
+  LDA e1y
+  ldy #$8
+  STA [oamL], y   ; write to y-pos of sprite 3/4
+  ldy #$c
+  STA [oamL], y   ; write to y-pos of sprite 4/4
+  SEC             ; set carry
+  SBC #$8         ; account for shift of tile location in *.chr . add #$8 to x
+  ldy #$0
+  STA [oamL], y   ; write to y-pos of sprite 1/4
+  ldy #$4
+  STA [oamL], y   ; write to y-pos of sprite 2/4
+
+  LDA e1.0t
+  ldy #$1
+  sta [oamL], y
+  LDA e1.1t
+  ldy #$5
+  sta [oamL], y
+  LDA e1.2t
+  ldy #$9
+  sta [oamL], y
+  LDA e1.3t
+  ldy #$d
+  sta [oamL], y
+
+  LDA e1.0a
+  ldy #$2
+  sta [oamL], y
+  ldy #$6
+  sta [oamL], y
+  ldy #$a
+  sta [oamL], y
+  ldy #$e
+  sta [oamL], y
+
+  LDA e1x
+  ldy #$7
+  STA [oamL], y   ; x-pos of sprite 2/4
+  ldy #$f
+  STA [oamL], y   ; x-pos of sprite 4/4
+  SEC
+  SBC #$8
+  ldy #$3
+  STA [oamL], y   ; x-pos of sprite 1/4
+  ldy #$b
+  STA [oamL], y   ; x-pos of sprite 3/4
+;update oam
+  lda e1
+  clc         ; clear carry
+  adc e1s    ; add #$10 (size of this object) to increment available oam address
+  sta oamL    ; store updated available oam address
+
+  lda oamL    ; load available oam address
+  sta e2      ; store it for this object
+  LDA e2y
+  ldy #$8
+  STA [oamL], y   ; write to y-pos of sprite 3/4
+  ldy #$c
+  STA [oamL], y   ; write to y-pos of sprite 4/4
+  SEC             ; set carry
+  SBC #$8         ; account for shift of tile location in *.chr . add #$8 to x
+  ldy #$0
+  STA [oamL], y   ; write to y-pos of sprite 1/4
+  ldy #$4
+  STA [oamL], y   ; write to y-pos of sprite 2/4
+
+  LDA e2.0t
+  ldy #$1
+  sta [oamL], y
+  LDA e2.1t
+  ldy #$5
+  sta [oamL], y
+  LDA e2.2t
+  ldy #$9
+  sta [oamL], y
+  LDA e2.3t
+  ldy #$d
+  sta [oamL], y
+
+  LDA e2.0a
+  ldy #$2
+  sta [oamL], y
+  ldy #$6
+  sta [oamL], y
+  ldy #$a
+  sta [oamL], y
+  ldy #$e
+  sta [oamL], y
+
+  LDA e2x
+  ldy #$7
+  STA [oamL], y   ; x-pos of sprite 2/4
+  ldy #$f
+  STA [oamL], y   ; x-pos of sprite 4/4
+  SEC
+  SBC #$8
+  ldy #$3
+  STA [oamL], y   ; x-pos of sprite 1/4
+  ldy #$b
+  STA [oamL], y   ; x-pos of sprite 3/4
+;update oam
+  lda e2
+  clc         ; clear carry
+  adc e2s    ; add #$10 (size of this object) to increment available oam address
+  sta oamL    ; store updated available oam address
+
+
+  lda oamL    ; load available oam address
+  sta e3      ; store it for this object
+  LDA e3y
+  ldy #$8
+  STA [oamL], y   ; write to y-pos of sprite 3/4
+  ldy #$c
+  STA [oamL], y   ; write to y-pos of sprite 4/4
+  SEC             ; set carry
+  SBC #$8         ; account for shift of tile location in *.chr . add #$8 to x
+  ldy #$0
+  STA [oamL], y   ; write to y-pos of sprite 1/4
+  ldy #$4
+  STA [oamL], y   ; write to y-pos of sprite 2/4
+
+  LDA e3.0t
+  ldy #$1
+  sta [oamL], y
+  LDA e3.1t
+  ldy #$5
+  sta [oamL], y
+  LDA e3.2t
+  ldy #$9
+  sta [oamL], y
+  LDA e3.3t
+  ldy #$d
+  sta [oamL], y
+
+  LDA e3.0a
+  ldy #$2
+  sta [oamL], y
+  ldy #$6
+  sta [oamL], y
+  ldy #$a
+  sta [oamL], y
+  ldy #$e
+  sta [oamL], y
+
+  LDA e3x
+  ldy #$7
+  STA [oamL], y   ; x-pos of sprite 2/4
+  ldy #$f
+  STA [oamL], y   ; x-pos of sprite 4/4
+  SEC
+  SBC #$8
+  ldy #$3
+  STA [oamL], y   ; x-pos of sprite 1/4
+  ldy #$b
+  STA [oamL], y   ; x-pos of sprite 3/4
+;update oam
+  lda e3
+  clc         ; clear carry
+  adc e3s    ; add #$10 (size of this object) to increment available oam address
+  sta oamL    ; store updated available oam address
+  
+  jmp frameend
 
 even:  
   inc framecounter3
@@ -635,69 +915,42 @@ even:
   ldy #$f
   STA [oamL], y    ; x-pos of sprite 4/4
   SEC
-  sbc #$8
+  SBC #$8
   ldy #$3
   STA [oamL], y    ; x-pos of sprite 1/4
   ldy #$b
   STA [oamL], y    ; x-pos of sprite 3/4    
-  
-  
-  jmp frameend
-  
-odd:
-  dec framecounter3
-
-UpdateSpritePosition:
-  lda e1
-  sta oamL
-  LDA e1y
-  ldy #$8
-  STA [oamL], y   ; write to y-pos of sprite 3/4
-  ldy #$c
-  STA [oamL], y   ; write to y-pos of sprite 4/4
-  SEC             ; set carry
-  SBC #$8         ; account for shift of tile location in *.chr . add #$8 to x
+;update oam
+  lda p1
+  clc         ; clear carry
+  adc p1s    ; add #$10 (size of this object) to increment available oam address
+  sta oamL    ; store updated available oam address
+   
+; place missile on screen
+  lda oamL
+  sta m1
+  LDA m1y
   ldy #$0
-  STA [oamL], y   ; write to y-pos of sprite 1/4
-  ldy #$4
-  STA [oamL], y   ; write to y-pos of sprite 2/4
+  STA [oamL], y    ; write to y-pos of sprite 1/4
 
-  LDA e1.0t
+
+  LDA m1t
   ldy #$1
   sta [oamL], y
-  LDA e1.1t
-  ldy #$5
-  sta [oamL], y
-  LDA e1.2t
-  ldy #$9
-  sta [oamL], y
-  LDA e1.3t
-  ldy #$d
-  sta [oamL], y
 
-  LDA e1.0a
+  LDA m1a
   ldy #$2
   sta [oamL], y
-  ldy #$6
-  sta [oamL], y
-  ldy #$a
-  sta [oamL], y
-  ldy #$e
-  sta [oamL], y
-
-  LDA e1x
-  ldy #$7
-  STA [oamL], y   ; x-pos of sprite 2/4
-  ldy #$f
-  STA [oamL], y   ; x-pos of sprite 4/4
-  SEC
-  SBC #$8
+ 
+  LDA m1x
   ldy #$3
-  STA [oamL], y   ; x-pos of sprite 1/4
-  ldy #$b
-  STA [oamL], y   ; x-pos of sprite 3/4
-
-
+  STA [oamL], y    ; x-pos of sprite 1/4
+;update oam
+  lda m1
+  clc         ; clear carry
+  adc m1s     ; add #$4 (size of this object) to increment available oam address
+  sta oamL    ; store updated available oam address
+  
 
   
 frameend:
@@ -756,7 +1009,20 @@ sprites:
 
 
 
-
+oam:
+  .db $8,$c,$0,$4
+  .db $1,$5,$9,$d
+  .db $2,$6,$a,$e
+  .db $7,$f,$3,$b
+  
+;VARIABLES
+health:         ; health table
+  .db p1,p1.0h,p1.1h,p1.2h,p1.3h
+  .db e1,e1h
+  .db e2,e2h
+  .db m1,m1h
+  .db l1,l1h
+  .db l2,l2h
 
   
   INbackground1:
