@@ -12,6 +12,7 @@ gamestate  .rs 1  ; $0 .rs 1 means reserve one byte of space
 buttons1   .rs 1  ; $1 player 1 gamepad buttons, one bit per button
 buttons2   .rs 1  ; $2 player 2 gamepad buttons, one bit per button  
 laserframe .rs 1     ; frame count for synchronising laser firing
+resetmissile .rs 1
 
 framecounter1 .rs 1  ; $5 count nmi frames. 60 frames per sec
 framecounter2 .rs 1  ; $6 count nmi frames. 1 frame per sec
@@ -142,6 +143,10 @@ l2e .rs 1       ; extended attributes
 ; 6 : 
 ; 7 : has been fired
 
+y1 .rs 1
+y2 .rs 1
+x1 .rs 1
+x2 .rs 1
 yd .rs 1  ; y delta
 xd .rs 1  ; x delta
 ysequal .rs 1  ; y1 and y2 are equal
@@ -396,9 +401,15 @@ LoadINAttribute:
   sta l1h   ; laser has 4 health
   sta l2h   ; laser has 4 health
 ; neutral  
-  lda #$8
-  sta prox           ; store collision limit - no longer used i think
-
+  lda #$f
+  sta prox           ; store collision limit 
+  lda #$0
+  sta ysequal
+  sta y1small
+  sta y2small
+  sta xsequal
+  sta x1small
+  sta x2small
 
 
 
@@ -609,19 +620,174 @@ EnginePlaying:
 ; if it has exceeded x position of xxx, reset the missile
   LDA m1x ; load x coordinates of missile sprite
   CMP #$F0 ; check if the coordinates equals screen out of bound area
-  BEQ missilereset ; if result is zero, branch to missilereset label to reset the status of the missile
-  CMP #$F1 ; check if the coordinates equals screen out of bound area
-  BEQ missilereset ; if result is zero, branch to missilereset label to reset the status of the missile
-  
- ;if it has been fired, add 2 to x-pos of missile $0213
+  BCC .continue ; if result is zero, branch to missilereset label to reset the status of the missile
+  JMP missilereset
+
+.continue  
+ ;if it has been fired, add 2 to x-pos of missile $0213 and check for collisions
   LDA m1e
   AND #%10000000  ; check bit 7
-  BEQ missile_end ; branch if equal to zero, branch to missile_end if it hasnt been fired
+  BNE collisioncheck ; branch if equal to zero, branch to missile_end if it hasnt been fired
+  JMP missile_end
+collisioncheck:
   LDA m1x ; load current x-pos of missile
   CLC
-  ADC #$2 ; move the missile to the right
+  ADC #$1 ; move the missile to the right
   STA m1x
-  JMP missile_end
+
+  lda m1y
+  sta y1  ; load missile y-pos into y1
+  lda e1y
+  sta y2
+  lda m1x
+  sta x1
+  lda e1x
+  sta x2
+
+checky:
+  lda y1
+  cmp y2  ; accumulator (y1) less than y2?
+  beq .ysequal  ; neither, y1 is equal to y2
+  bcc .y1small  ; yes, y1 (accumulator) less than y2
+  bcs .y2small  ; no, y2 is less than y1 (accumulator)
+  brk
+.ysequal:
+  lda #$1
+  sta ysequal
+  jmp .checkx 
+
+.y1small:
+  lda #$1
+  sta y1small
+  jmp .checkx 
+
+.y2small:
+  lda #$1
+  sta y2small
+  jmp .checkx 
+ 
+.checkx:
+  lda x1
+  cmp x2 ; accumulator (x1) less than x2?
+  beq .xsequal ; neither, x1 is equal to x2
+  bcc .x1small ; yes, x1 (accumulator) less than x2
+  bcs .x2small ; no, x2 is less than x1 (accumulator)  
+  brk
+.xsequal:
+  lda #$1
+  sta xsequal
+  jmp .check1end
+
+.x1small:
+  lda #$1
+  sta x1small
+  jmp .check1end
+
+.x2small:
+  lda #$1
+  sta x2small
+  jmp .check1end
+
+.check1end:
+  lda y1small
+  cmp #$1
+  beq .y2y1
+
+  lda y2small
+  cmp #$1
+  beq .y1y2
+
+  lda ysequal 
+  cmp #$1
+  beq .ynop
+  brk
+.y2y1:
+  sec
+  lda y2
+  sbc y1
+  sta yd
+  jmp .check2end
+
+.y1y2:
+  sec
+  lda y1
+  sbc y2
+  sta yd
+  jmp .check2end
+
+.ynop:
+  lda #$0
+  sta yd
+  jmp .check2end
+
+.check2end:
+  lda x1small
+  cmp #$1
+  beq .x2x1
+
+  lda x2small
+  cmp #$1
+  beq .x1x2
+
+  lda xsequal 
+  cmp #$1
+  beq .xnop
+  brk
+.x2x1:
+  sec
+  lda x2
+  sbc x1
+  sta xd
+  jmp .check3end
+
+.x1x2:
+  sec
+  lda x1
+  sbc x2
+  sta xd
+  jmp .check3end
+
+.xnop:
+  lda #$0
+  sta xd
+  jmp .check3end
+
+.check3end:
+  clc
+  lda yd
+  cmp prox  ; accumulator less than prox?
+  bcs .clear ; no, accumulator is not less than prox
+
+  lda xd
+  cmp prox  ; accumulator less than prox?
+  bcs .clear ; no, accumulator is not less than prox
+
+.collision:
+  ; play explosion
+  ; calculate damage
+  ;jmp missilereset ; reset missile
+  jsr init_apu ; reinitialize audio to stop the missile sound effect
+  lda #150
+  sta $4006
+  lda #200
+  sta $4007
+  lda #%10011111
+  sta $4004
+  lda #$1
+  LDA #$DC ; $DC = 220
+  STA m1y ; set the y coordinates of the missile in the status bar
+  LDA #$CD ; $CD = 205
+  STA m1x ; set the x coordinates of the missile in the status bar
+  LDA m1e
+  AND #%01111111  ; clear bit 7
+  STA m1e
+
+.clear:
+ 
+  jmp missile_end
+
+  
+
 
 ;move the missile back to the initial position. reset the fired variable to 0 
 missilereset:
@@ -669,6 +835,8 @@ ReadB:
   LDA p1x ; load x-pos of player
   STA m1x ; set starting x-pos of missile
   LDA p1y ; load y-pos of player
+  SEC
+  SBC #$8
   STA m1y ; set starting y-pos of missile
 
 ReadBDone:        ; handling this button is done
@@ -685,9 +853,9 @@ ReadBDone:        ; handling this button is done
   LDA p1y
 
   ldy #$8
-  STA [oamL], y    ; write to y-pos of sprite 3/4
+  STA [oamL], y    ; write to y-pos of sprite 3/4 <--- y-pos p1y
   ldy #$c
-  STA [oamL], y    ; write to y-pos of sprite 4/4
+  STA [oamL], y    ; write to y-pos of sprite 4/4 <--- y-pos p1y
   SEC              ; set carry
   SBC #$8          ; account for shift of tile location in *.chr . add #$8 to x
   ldy #$0
@@ -708,9 +876,9 @@ ReadUpDone:
   LDA p1y
 
   ldy #$8
-  STA [oamL], y    ; write to y-pos of sprite 3/4
+  STA [oamL], y    ; write to y-pos of sprite 3/4 <--- y-pos p1y
   ldy #$c
-  STA [oamL], y    ; write to y-pos of sprite 4/4
+  STA [oamL], y    ; write to y-pos of sprite 4/4 <--- y-pos p1y
   SEC              ; set carry
   SBC #$8          ; account for shift of tile location in *.chr . add #$8 to x
   ldy #$0
@@ -731,9 +899,9 @@ ReadDownDone:
   LDA p1x
 
   ldy #$7
-  STA [oamL], y    ; x-pos of sprite 2/4
+  STA [oamL], y    ; x-pos of sprite 2/4 <--- x-pos p1x
   ldy #$f
-  STA [oamL], y    ; x-pos of sprite 4/4
+  STA [oamL], y    ; x-pos of sprite 4/4 <--- x-pos p1x
   SEC
   sbc #$8
   ldy #$3
@@ -754,15 +922,15 @@ ReadLeftDone:
   LDA p1x
 
   ldy #$7
-  STA [oamL], y    ; x-pos of sprite 2/4
+  STA [oamL], y    ; x-pos of sprite 2/4 <--- x-pos p1x
   ldy #$f
-  STA [oamL], y    ; x-pos of sprite 4/4
+  STA [oamL], y    ; x-pos of sprite 4/4 <--- x-pos p1x
   SEC
   sbc #$8
   ldy #$3
   STA [oamL], y    ; x-pos of sprite 1/4
   ldy #$b
-  STA [oamL], y    ; x-pos of sprite 3/4  
+  STA [oamL], y    ; x-pos of sprite 3/4 
   
 ReadRightDone:
 
@@ -783,9 +951,9 @@ odd:
   sta e1      ; store it for this object
   LDA e1y
   ldy #$8
-  STA [oamL], y   ; write to y-pos of sprite 3/4
+  STA [oamL], y   ; write to y-pos of sprite 3/4 <--- y-pos e1y
   ldy #$c
-  STA [oamL], y   ; write to y-pos of sprite 4/4
+  STA [oamL], y   ; write to y-pos of sprite 4/4 <--- y-pos e1y
   SEC             ; set carry
   SBC #$8         ; account for shift of tile location in *.chr . add #$8 to x
   ldy #$0
@@ -818,9 +986,9 @@ odd:
 
   LDA e1x
   ldy #$7
-  STA [oamL], y   ; x-pos of sprite 2/4
+  STA [oamL], y   ; x-pos of sprite 2/4 <--- x-pos e1x
   ldy #$f
-  STA [oamL], y   ; x-pos of sprite 4/4
+  STA [oamL], y   ; x-pos of sprite 4/4 <--- x-pos e1x
   SEC
   SBC #$8
   ldy #$3
@@ -952,9 +1120,9 @@ even:
   sta oamL
   LDA p1y
   ldy #$8
-  STA [oamL], y    ; write to y-pos of sprite 3/4
+  STA [oamL], y    ; write to y-pos of sprite 3/4 <--- y-pos p1y
   ldy #$c
-  STA [oamL], y    ; write to y-pos of sprite 4/4
+  STA [oamL], y    ; write to y-pos of sprite 4/4 <--- y-pos p1y
   SEC              ; set carry
   SBC #$8          ; account for shift of tile location in *.chr . add #$8 to x
   ldy #$0
@@ -987,9 +1155,9 @@ even:
  
   LDA p1x
   ldy #$7
-  STA [oamL], y    ; x-pos of sprite 2/4
+  STA [oamL], y    ; x-pos of sprite 2/4 <--- x-pos p1x
   ldy #$f
-  STA [oamL], y    ; x-pos of sprite 4/4
+  STA [oamL], y    ; x-pos of sprite 4/4 <--- x-pos p1x
   SEC
   SBC #$8
   ldy #$3
@@ -1006,6 +1174,8 @@ even:
   lda oamL
   sta m1
   LDA m1y
+  CLC
+  ADC #$6
   ldy #$0
   STA [oamL], y    ; write to y-pos of sprite 1/4
 
@@ -1018,6 +1188,8 @@ even:
   sta [oamL], y
  
   LDA m1x
+  CLC
+  ADC #$6
   ldy #$3
   STA [oamL], y    ; x-pos of sprite 1/4
 ;update oam
@@ -1069,7 +1241,7 @@ palette:
 
 
 
-oam:
+oam: ; oam offsets
   .db $8,$c,$0,$4
   .db $1,$5,$9,$d
   .db $2,$6,$a,$e
