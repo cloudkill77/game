@@ -5,18 +5,28 @@
 
 
 ;; DECLARE SOME VARIABLES HERE
+;; .rs 1 means reserve one byte of space
   .rsset $0000  ;;start variables at ram location 0
-oamL .rs 1        ; starts at 00, up to FF
-oamH .rs 1        ; fixed at 02 
-gamestate  .rs 1  ; $0 .rs 1 means reserve one byte of space
-buttons1   .rs 1  ; $1 player 1 gamepad buttons, one bit per button
-buttons2   .rs 1  ; $2 player 2 gamepad buttons, one bit per button  
-laserframe .rs 1     ; frame count for synchronising laser firing
-resetmissile .rs 1
+oamL .rs 1        ; $0 - starts at 00, up to FF
+oamH .rs 1        ; $1 - fixed at 02 
+gamestate  .rs 1  ; $2 - current gamestate
+buttons1   .rs 1  ; $3 player 1 gamepad buttons, one bit per button
+buttons2   .rs 1  ; $4 player 2 gamepad buttons, one bit per button  
+score1L     .rs 1 ; $5 player 1 score
+score1H     .rs 1 ; $6 player 1 score
+score2L     .rs 1 ; $7 player 2 score
+score2H     .rs 1 ; $8 player 2 score
+laserframe .rs 1  ; $9 frame count for synchronising laser firing
+resetmissile .rs 1 ; $A - not used
+tS0 .rs 1 ; $B
+tS1 .rs 1 ; $C
+tS2 .rs 1 ; $D
+tS3 .rs 1 ; $E
+tS4 .rs 1 ; $F
 
-framecounter1 .rs 1  ; $5 count nmi frames. 60 frames per sec
-framecounter2 .rs 1  ; $6 count nmi frames. 1 frame per sec
-framecounter3 .rs 1  ; $7 slowly counts up from $0
+framecounter1 .rs 1  ; $10 count nmi frames. 60 frames per sec
+framecounter2 .rs 1  ; $11 count nmi frames. 1 frame per sec
+framecounter3 .rs 1  ; $12 slowly counts up from $0
 
 ; GAMESTATE PLAYING
 p1 .rs 1        ; player 1 low byte oam address of 1st tile eg #$10: $0210
@@ -165,6 +175,50 @@ STATEINTRO     = $00  ; display into screen
 STATEREADY2GO  = $01  ; displaying ready to go screen
 STATEPLAYING   = $02  ; move sprite, check for collisions
 STATEGAMEOVER  = $03  ; displaying game over screen
+
+t21 = $D4 ; !
+t2e = $C3 ; .
+t2c = $D3 ; ,
+t0 = $E0 ; 0
+t1 = $E1 ; 1
+t2 = $E2 ; 2
+t3 = $E3 ; 3
+t4 = $E4 ; 4
+t5 = $E5 ; 5
+t6 = $E6 ; 6
+t7 = $E7 ; 7
+t8 = $E8 ; 8
+t9 = $E9 ; 9
+t3e = $C2 ; >
+t3f = $C1 ; ?
+tA = $EA ; A
+tB = $EB ; B
+tC = $EC ; C
+tD = $ED ; D
+tE = $EE ; E
+tF = $EF ; F
+tG = $F0 ; G
+tH = $F1 ; H
+tI = $F2 ; I
+tJ = $F3 ; J
+tK = $F4 ; K
+tL = $F5 ; L
+tM = $F6 ; M
+tN = $F7 ; N
+tO = $F8 ; O
+tP = $F9 ; P
+tQ = $FA ; Q
+tR = $FB ; R
+tS = $FC ; S
+tT = $FD ; T
+tU = $FE ; U
+tV = $FF ; V
+tW = $C0 ; W
+tX = $D0 ; X
+tY = $D1 ; Y
+tZ = $D2 ; Y
+t5f = $D5 ; _
+
 
 
 ;;;;;;;;;;;;;;;;;
@@ -411,7 +465,12 @@ LoadINAttribute:
   sta x1small
   sta x2small
 
-
+  lda #$E0
+  sta tS0
+  sta tS1
+  sta tS2
+  sta tS3
+  sta tS4
 
 
 
@@ -493,9 +552,36 @@ ReadController1Loop:
   RTS
 
 
-  
-  
+
 DrawScore:
+  
+
+
+
+LoadScoreBackground:
+  LDA $2002             ; read PPU status to reset the high/low latch
+  LDA #$20
+  STA $2006             ; write the high byte of $2000 address
+  LDA #$00
+  STA $2006             ; write the low byte of $2000 address
+ 
+  LDX #$00              ; start out at 0
+.loop1:
+  LDA SCbackground1, x  ; load data from address (background + the value in x)
+  STA $2007             ; write to PPU
+  INX                   ; X = X + 1
+  CPX #$47           ; Compare X to hex $80, decimal 128 - copying 128 bytes
+  BNE .loop1  ; Branch to LoadBackgroundLoop if compare was Not Equal to zero
+  LDA tS4
+  STA $2007
+  LDA tS3
+  STA $2007
+  LDA tS2
+  STA $2007
+  LDA tS1
+  STA $2007
+  LDA tS0
+  STA $2007
   ;;draw score on screen using background tiles
   ;;or using many sprites
   RTS
@@ -511,6 +597,7 @@ start:
 ;;;;;;;;;;;
 
 NMI: ; called 60 times per second
+
 ; [RENDER]  
   LDA #$00
   STA $2003       ; set the low byte (00) of the RAM address
@@ -518,7 +605,7 @@ NMI: ; called 60 times per second
   STA $4014       ; set the high byte (02) of the RAM address, start the transfer
 
 
-  
+
   
 
 ;render all frames
@@ -536,7 +623,7 @@ NMI: ; called 60 times per second
 
 
 
-  JSR DrawScore
+
 
 ;; PPU cleanup?
 
@@ -616,6 +703,7 @@ ReadStartDone:
  
 EnginePlaying:
 
+  JSR DrawScore
 
 ; if it has exceeded x position of xxx, reset the missile
   LDA m1x ; load x coordinates of missile sprite
@@ -766,6 +854,8 @@ checky:
   ; play explosion
   ; calculate damage
   ;jmp missilereset ; reset missile
+  inc score1L
+  inc tS0
   jsr init_apu ; reinitialize audio to stop the missile sound effect
   lda #150
   sta $4006
@@ -1257,15 +1347,11 @@ health:         ; health table
   .db l2,l2h
 
   
-  INbackground1:
-  .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
-  .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
-  .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
-  .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
-  .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
-  .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
-  .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
-  .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
+INbackground1:
+  .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
+  .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
+  .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
+  .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
 INbackground2:
   .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
   .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
@@ -1293,7 +1379,10 @@ INbackground4:
   .db $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F, $1F
 INattribute:
   .db %00000000, %00000000, %0000000, %00000000, %00000000, %00000000, %00000000, %00000000
-  
+
+SCbackground1:
+  .db $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
+  .db $0F, tS,  tC,  tO,  tR,  tE,  $0F 
 
 ;;;;;;;;;;;;;;  
 
