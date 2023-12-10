@@ -638,118 +638,7 @@ start:
 
   RTS
   
-
-;;;;;;;;;;;
-
-NMI: ; called 60 times per second
-
-; [RENDER]  
-  LDA #$00
-  STA $2003       ; set the low byte (00) of the RAM address
-  LDA #$02
-  STA $4014       ; set the high byte (02) of the RAM address, start the transfer
-
-
-
-  
-
-;render all frames
-
-
-
-;render odd frames
-
-
-;render even frames
-
-
-
-
-
-
-
-
-
-;; PPU cleanup?
-
-  JSR ReadController1
-; JSR ReadController2  ;;get the current button data for player 2
-
-GameEngine:  
-StateIntro:
-  LDA gamestate
-  CMP #STATEINTRO
-  BNE StateReady2Go
-  JMP EngineIntro    ;;game is displaying intro screen
-  
-StateReady2Go:
-  LDA gamestate
-  CMP #STATEREADY2GO
-  BNE StatePlaying
-  JMP EngineReady2Go ;; game is ready
-
-StatePlaying:  
-  LDA gamestate
-  CMP #STATEPLAYING
-  BNE StateGameOver
-  JMP EnginePlaying   ;;game is playing
-
-StateGameOver:    
-  LDA gamestate
-  CMP #STATEGAMEOVER
-  BNE GameEngineDone
-  JMP EngineGameOver  ;;game is displaying ending screen
-  
-GameEngineDone:  
-  
-;  dec counter ; 60 fps counting down
-  inc framecounter1 ; 60 fps counting up
-
-  lda framecounter1
-  cmp #$3c ; compare to decimal 60, hex 3c, (1 second)
-  bne nmi_end ; branch until counter has reached $30
-  inc framecounter2 ; 1 fps counting up
-  lda #$0
-  sta framecounter1 ; reset framecounter1 to 0
-
-nmi_end:
-  RTI
-;;;;;;;;;;;;;;;
-
-;;;;;;;;
- 
-EngineIntro:
-
-
-  
-  JMP GameEngineDone
-
-
- ;;;;;;;;; 
- 
-EngineReady2Go:
-
-
-  ReadStart: 
-  LDA buttons1       ; load player 1 - buttons
-  AND #%00010000  ; only look at bit 4
-  BEQ ReadStartDone   ; branch to ReadStartDone if button is NOT pressed (0)
- 
-  jsr start
-
-ReadStartDone:
-
-
-  JMP GameEngineDone
-
-
-
-;;;;;;;;;;;
- 
-EnginePlaying:
-
-  JSR DrawScore
-
+MissileStuff:  
 ; if it has exceeded x position of xxx, reset the missile
   LDA m1x ; load x coordinates of missile sprite
   CMP #$F0 ; check if the coordinates equals screen out of bound area
@@ -768,6 +657,8 @@ collisioncheck:
   ADC #$1 ; move the missile to the right
   STA m1x
 
+  ldx #$00
+m1e1:
   lda m1y
   sta y1  ; load missile y-pos into y1
   lda e1y
@@ -776,6 +667,30 @@ collisioncheck:
   sta x1
   lda e1x
   sta x2
+  jmp checky
+m1e2:
+  inx
+  lda m1y
+  sta y1  ; load missile y-pos into y1
+  lda e2y
+  sta y2
+  lda m1x
+  sta x1
+  lda e2x
+  sta x2
+  jmp checky
+m1e3:
+  inx
+  lda m1y
+  sta y1  ; load missile y-pos into y1
+  lda e3y
+  sta y2
+  lda m1x
+  sta x1
+  lda e3x
+  sta x2
+  jmp checky
+
 
 checky:
   lda y1
@@ -918,11 +833,29 @@ checky:
   STA m1e
 
 .clear:
- 
-  jmp missile_end
 
+en0: 
+  CPX #$0
+  beq goback0 
+  jmp en1
   
+goback0:
+  jmp m1e2
 
+en1: 
+  CPX #$1
+  beq goback1
+  jmp en2
+
+goback1:
+  jmp m1e3
+  
+en2: 
+  CPX #$2
+  beq missile_end
+  brk
+  
+  jmp missile_end
 
 ;move the missile back to the initial position. reset the fired variable to 0 
 missilereset:
@@ -938,6 +871,120 @@ missilereset:
   STA m1e
 
 missile_end:
+
+  RTS
+
+;;;;;;;;;;;
+
+NMI: ; called 60 times per second
+
+; [RENDER]  
+  LDA #$00
+  STA $2003       ; set the low byte (00) of the RAM address
+  LDA #$02
+  STA $4014       ; set the high byte (02) of the RAM address, start the transfer
+
+
+
+  
+
+;render all frames
+
+
+
+;render odd frames
+
+
+;render even frames
+
+
+
+
+
+
+
+
+
+;; PPU cleanup?
+
+  JSR ReadController1
+; JSR ReadController2  ;;get the current button data for player 2
+
+GameEngine:  
+StateIntro:
+  LDA gamestate
+  CMP #STATEINTRO
+  BNE StateReady2Go
+  JMP EngineIntro    ;;game is displaying intro screen
+  
+StateReady2Go:
+  LDA gamestate
+  CMP #STATEREADY2GO
+  BNE StatePlaying
+  JMP EngineReady2Go ;; game is ready
+
+StatePlaying:  
+  LDA gamestate
+  CMP #STATEPLAYING
+  BNE StateGameOver
+  JMP EnginePlaying   ;;game is playing
+
+StateGameOver:    
+  LDA gamestate
+  CMP #STATEGAMEOVER
+  BNE GameEngineDone
+  JMP EngineGameOver  ;;game is displaying ending screen
+  
+GameEngineDone:  
+  
+;  dec counter ; 60 fps counting down
+  inc framecounter1 ; 60 fps counting up
+
+  lda framecounter1
+  cmp #$3c ; compare to decimal 60, hex 3c, (1 second)
+  bne nmi_end ; branch until counter has reached $30
+  inc framecounter2 ; 1 fps counting up
+  lda #$0
+  sta framecounter1 ; reset framecounter1 to 0
+
+nmi_end:
+  RTI
+;;;;;;;;;;;;;;;
+
+;;;;;;;;
+ 
+EngineIntro:
+
+
+  
+  JMP GameEngineDone
+
+
+ ;;;;;;;;; 
+ 
+EngineReady2Go:
+
+
+  ReadStart: 
+  LDA buttons1       ; load player 1 - buttons
+  AND #%00010000  ; only look at bit 4
+  BEQ ReadStartDone   ; branch to ReadStartDone if button is NOT pressed (0)
+ 
+  jsr start
+
+ReadStartDone:
+
+
+  JMP GameEngineDone
+
+
+
+;;;;;;;;;;;
+ 
+EnginePlaying:
+
+  JSR DrawScore
+  JSR MissileStuff
 
 
 
