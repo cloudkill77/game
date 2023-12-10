@@ -455,6 +455,16 @@ Foreverloop:
   JMP Foreverloop     ;jump back to Forever, infinite loop
 
 
+init_apu:
+  lda #$00
+  sta $4015
+  lda #$0F
+  sta $4015
+; setup apu frame counter
+  lda #$40
+  sta $4017  
+  rts
+ 
   
 ; read controller subroutine. called from within NMI
 ReadController1:
@@ -465,8 +475,8 @@ ReadController1:
   LDX #$08		; cycle through loading values of $4016 8 times to get value for each button 
 ReadController1Loop:
   LDA $4016		; load value stored in $4016
-  LSR A			; bit0 -> Carry
-  ROL buttons1	; bit0 <- Carry
+  LSR A			; bit0 -> Carry - push bit 0 of accumulator into carry
+  ROL buttons1	; bit0 <- Carry - push carry into bit 0 of buttons1 variable
   DEX
   BNE ReadController1Loop
   RTS
@@ -595,8 +605,74 @@ ReadStartDone:
  
 EnginePlaying:
 
-  lda p1
-  sta oamL
+
+; if it has exceeded x position of xxx, reset the missile
+  LDA m1x ; load x coordinates of missile sprite
+  CMP #$F0 ; check if the coordinates equals screen out of bound area
+  BEQ missilereset ; if result is zero, branch to missilereset label to reset the status of the missile
+  CMP #$F1 ; check if the coordinates equals screen out of bound area
+  BEQ missilereset ; if result is zero, branch to missilereset label to reset the status of the missile
+  
+ ;if it has been fired, add 2 to x-pos of missile $0213
+  LDA m1e
+  AND #%10000000  ; check bit 7
+  BEQ missile_end ; branch if equal to zero, branch to missile_end if it hasnt been fired
+  LDA m1x ; load current x-pos of missile
+  CLC
+  ADC #$2 ; move the missile to the right
+  STA m1x
+  JMP missile_end
+
+;move the missile back to the initial position. reset the fired variable to 0 
+missilereset:
+  jsr init_apu ; reinitialize audio to stop the missile sound effect
+  LDA #$DC ; $DC = 220
+  STA m1y ; set the y coordinates of the missile in the status bar
+  LDA #$CD ; $CD = 205
+  STA m1x ; set the x coordinates of the missile in the status bar
+  ;LDA #$0 ; 0
+  ;STA m1e ; reset status to missile as unfired
+  LDA m1e
+  AND #%01111111  ; clear bit 7
+  STA m1e
+
+missile_end:
+
+
+
+  lda p1         ; load #$00
+  sta oamL       ; store it as oamL (player 1 is fixed to lowest OAM address)
+
+ReadB: 
+  LDA buttons1       ; load player 1 - buttons
+  AND #%01000000  ; only look at bit 6
+  BEQ ReadBDone   ; branch to ReadBDone if button is NOT pressed (0)
+                  ; add instructions here to do something when button IS pressed (1)
+
+;fire logic
+  LDA m1e          ; load extended attributes to see if it has been fired
+  AND #%10000000   ; look only at bit 7
+  BNE ReadBDone    ; branch if not equal to zero (if it has been fired, go to readbdone), otherwise, continue
+  LDA m1e 
+  ORA #%10000000   ; set bit 7 to 1
+  STA m1e
+
+
+;generate fired missile sound effect 
+  lda #130
+  sta $4002
+  lda #200
+  sta $4003
+  lda #%10111111
+  sta $4000
+  
+  LDA p1x ; load x-pos of player
+  STA m1x ; set starting x-pos of missile
+  LDA p1y ; load y-pos of player
+  STA m1y ; set starting y-pos of missile
+
+ReadBDone:        ; handling this button is done
+
 
   LDA buttons1       ; load player 1 - buttons
   AND #%00001000  ; only look at bit 3
@@ -700,7 +776,7 @@ ReadRightDone:
 odd:
   dec framecounter3
 
-  lda #$10
+  lda #$10    ; bypass the first #$10 addresses due to player 1 static mapping
   sta oamL
   
   lda oamL    ; load available oam address
@@ -754,7 +830,7 @@ odd:
 ;update oam
   lda e1
   clc         ; clear carry
-  adc e1s    ; add #$10 (size of this object) to increment available oam address
+  adc e1s     ; add #$10 (size of this object) to increment available oam address
   sta oamL    ; store updated available oam address
 
   lda oamL    ; load available oam address
@@ -933,7 +1009,6 @@ even:
   ldy #$0
   STA [oamL], y    ; write to y-pos of sprite 1/4
 
-
   LDA m1t
   ldy #$1
   sta [oamL], y
@@ -990,22 +1065,7 @@ palette:
   .db $0f,$2a,$09,$07	;sprite palette 3
 
 
-;     y,   tile,attribute, x
-sprites:
-;player:
-  .db $f0, $0A, %00000010, $f0   ;sprite 1/4: player
-  .db $f0, $0B, %00000010, $f0   ;sprite 2/4: player
-  .db $f0, $1A, %00000010, $f0   ;sprite 3/4: player
-  .db $f0, $1B, %00000010, $f0   ;sprite 4/4: player << collision detection configured on this tile
-  .db $f0, $0E, %00000001, $CD   ;missile (y 220, x 205)
-;tiefighter:
-  .db $f0, $4a, %00000000, $fe ; tiefighter 1/4
-  .db $f0, $4b, %00000000, $ff ; tiefighter 2/4
-  .db $f0, $5a, %00000000, $fe ; tiefighter 3/4
-  .db $f0, $5b, %00000000, $ff ; tiefighter 4/4 << collision detection configured on this tile
-;laser:
-  .db $f0, $00, %00000011, $ff ; laser1
-  .db $f0, $00, %00000011, $ff ; laser2
+
 
 
 
