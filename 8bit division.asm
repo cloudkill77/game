@@ -5,18 +5,18 @@ lda #$8          ; load &
 sta $1           ; store divisor
 define temp $5f  ; temp variable used for 10x multiplication of the remainder
 
-loop:
+loop0:
 inx       ; keep track of quotient = x
 sec
 lda $10   ; load dividend
 sbc $1    ; subtract divisor
 sta $10   ; store new dividend value
-beq zero  ; if A is equal to zero, branch to label "zero"
+beq zero0  ; if A is equal to zero, branch to label "zero"
 cmp $1    ; compare A to divisor
-bcc less  ; if A is less than divisor, branch to label "less"
-jmp loop ; repeat loop for repeated subtractions
+bcc less0  ; if A is less than divisor, branch to label "less"
+jmp loop0 ; repeat loop for repeated subtractions
 
-loop1:
+loop1:     ; first decimal place
 iny
 sec
 lda $11
@@ -27,7 +27,7 @@ cmp $1
 bcc less1
 jmp loop1
 
-loop2:
+loop2:     ; second decimal place
 iny
 sec
 lda $12
@@ -38,19 +38,19 @@ cmp $1
 bcc less2
 jmp loop2
 
-zero:
+zero0:     ; quotient
 stx $20   ; no fractions, store quotient in $20
 brk
 
-zero1:
+zero1:     ; quotient first decimal
 sty $21   ; store quotient1 in $21
 brk
 
-zero2:
+zero2:     ; quotient second decimal
 sty $22   ; store quotient2 in $22
 brk
 
-less:     ; perform 10x multiplication of first remainder
+less0:     ; perform 10x multiplication of first remainder
 stx $20   ; store quotient1 in $20
 asl       ; x2  
 sta temp  ; store product
