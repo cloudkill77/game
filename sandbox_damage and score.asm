@@ -169,6 +169,7 @@ prox .rs 1     ; proximity limit for collision
 enemy_yr .rs 1 ; enemy reaction delay
 enemy_homing .rs 1 ; enemy is homing in on player
 player_enemy_collision .rs 1
+missile_enemy_collision .rs 1
 
 ;; DECLARE SOME CONSTANTS HERE
 STATEINTRO     = $00  ; display into screen
@@ -553,48 +554,46 @@ ReadController1Loop:
 
 IncrementScore:
 .Inc0:
-  LDA tS0      ; load the lowest digit of the number
-  CLC
-  ADC #$01     ; add one
-  STA tS0
+  INC tS0
+  LDA tS0
   CMP #$EA     ; check if it overflowed, now equals 10
   BNE .IncDone  ; if there was no overflow, all done
 .Inc1:
   LDA #$E0
   STA tS0      ; wrap digit to 0
-  LDA tS1      ; load the next digit
-  CLC
-  ADC #$01     ; add one, the carry from previous digit
-  STA tS1
+  INC tS1      ; increment the next digit
+  LDA tS1
   CMP #$EA     ; check if it overflowed, now equals 10
   BNE .IncDone  ; if there was no overflow, all done
 .Inc2:
   LDA #$E0
   STA tS1      ; wrap digit to 0
-  LDA tS2      ; load the next digit
-  CLC
-  ADC #$01     ; add one, the carry from previous digit
-  STA tS2
+  INC tS2      ; load the next digit
+  LDA tS2
   CMP #$EA
   BNE .IncDone
 .Inc3:
   LDA #$E0
   STA tS2
+  INC tS3
   LDA tS3
-  CLC  
-  ADC #$01
-  STA tS3
   CMP #$EA
   BNE .IncDone
 .Inc4:
   LDA #$E0
   STA tS3
+  INC tS4
   LDA tS4
-  CLC
-  ADC #$01
+  CMP #$EA  ; Score of 99999, special action? extra life
+  BNE .IncDone
+.Reset:
+  INC p1l   ; inc player 1 lives
+  LDA #$E0
+  STA tS0
+  STA tS1
+  STA tS2
+  STA tS3
   STA tS4
-  CMP #$E9  ; Score of 99999, special action?
-  BNE .IncDone  
 .IncDone:
   RTS
 
@@ -802,20 +801,21 @@ checky:
 
 .check3end:
   clc
-  lda yd
-  cmp prox  ; accumulator less than prox?
-  bcs .clear ; no, accumulator is not less than prox
+  lda yd      ; load y-delta
+  cmp prox    ; accumulator less than prox?
+  bcs .clear  ; no, accumulator is not less than prox
 
-  lda xd
-  cmp prox  ; accumulator less than prox?
-  bcs .clear ; no, accumulator is not less than prox
+  lda xd      ; load x-delta
+  cmp prox    ; accumulator less than prox?
+  bcs .clear  ; no, accumulator is not less than prox
+  jmp .collision
+.clear:
+  jmp en0
 
 .collision:
   ; play explosion
-  ; calculate damage
-  ;jmp missilereset ; reset missile
-  inc score1L
-  jsr IncrementScore
+  ; record damage
+  ; reset missile
   jsr init_apu ; reinitialize audio to stop the missile sound effect
   lda #150
   sta $4006
@@ -823,39 +823,69 @@ checky:
   sta $4007
   lda #%10011111
   sta $4004
-  lda #$1
+  stx missile_enemy_collision  ; x=0 enemy1, x=1 enemy2, x=2 enemy3
+  inc score1L
+  jsr IncrementScore
   LDA #$DC ; $DC = 220
   STA m1y ; set the y coordinates of the missile in the status bar
   LDA #$CD ; $CD = 205
   STA m1x ; set the x coordinates of the missile in the status bar
   LDA m1e
-  AND #%01111111  ; clear bit 7
+  AND #%01111111  ; clear bit 7 to mark missile as unfired
   STA m1e
+  cpx #$0
+  beq e1damage    ; collided with enemy 1
+  cpx #$1
+  beq e2damage    ; collided with enemy 2
+  cpx #$2
+  beq e3damage    ; collided with enemy 3
+  brk
 
-.clear:
 
-en0: 
+e3damage:
+  lda e3h         ; load health of enemy 3
+  sec
+  sbc m1h         ; subtract health of missile 1
+  sta e3h         ; store new health of enemy 3
+  jmp missile_end
+
+e2damage:
+  lda e2h         ; load health of enemy 2
+  sec
+  sbc m1h         ; subtract health of missile 1
+  sta e2h         ; store new health of enemy 2
+  jmp missile_end
+
+e1damage:
+  lda e1h         ; load health of enemy 1
+  sec
+  sbc m1h         ; subtract health of missile 1
+  sta e1h         ; store new health of enemy 1
+  jmp missile_end
+  
+en0:              ; encounter run 0
   CPX #$0
-  beq goback0 
+  beq .m1e1
   jmp en1
   
-goback0:
-  jmp m1e2
+.m1e1:
+  jmp m1e2        ; run collision check against enemy 2
 
-en1: 
+en1:              ; encounter run 1
   CPX #$1
-  beq goback1
+  beq .m1e2
   jmp en2
 
-goback1:
-  jmp m1e3
+.m1e2:
+  jmp m1e3        ; run collision check against enemy 3
   
-en2: 
-  CPX #$2
-  beq missile_end
+en2:              ; encounter run 2
+  CPX #$2         ; if x wasnt 0 or 1, then it would be 2, so this check is not necessary unless additional enemies are added
+  beq .m1e3
   brk
-  
-  jmp missile_end
+
+.m1e3:
+  jmp missile_end ; jump to end
 
 ;move the missile back to the initial position. reset the fired variable to 0 
 missilereset:
