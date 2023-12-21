@@ -1,3 +1,9 @@
+; calculate distance between two coordinates using pythagoras theorem
+; manually set y and x-positions are subtracted from each other to get the yd and xd (y-delta and x-delta). these are then processed using pythagoras' theorem to get the length of the hypotenuse (ie the distance between the two points). currently p1y and p1x need to be smaller than e1y and e1x for the calculation to work.
+
+
+
+
 define p1y $00
 define p1x $01
 define e1y $10
