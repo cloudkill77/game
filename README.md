@@ -15,3 +15,4 @@ contains some images modelled after Star Wars (tm):
 • death star
 
 ![screenshot](images/_background/game sample screen layout.png)
+![plot](images/_background/game sample screen layout.png)
