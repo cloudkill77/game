@@ -14,5 +14,6 @@ contains some images modelled after Star Wars (tm):
 • star destroyers
 • death star
 
-![Alt text](images/_background/game sample screen layout.png?raw=true "Title")
-
+<p align="left">
+  <img src="images/_background/game sample screen layout.png" width="350" alt="accessibility text">
+</p>
