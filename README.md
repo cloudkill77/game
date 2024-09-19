@@ -13,3 +13,5 @@ contains some images modelled after Star Wars (tm):
 • tie fighters
 • star destroyers
 • death star
+
+![screenshot](images/_background/game sample screen layout.png)
